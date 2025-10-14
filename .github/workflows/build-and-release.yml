@@ -20,10 +20,10 @@ on:
     outputs:
       version:
         description: 'The incremented version number'
-        value: ${{ steps.increment_version.outputs.version }}
+        value: ${{ jobs.build.outputs.version || jobs.build-no-test.outputs.version }}
       tag_name:
         description: 'The tag name for the release'
-        value: ${{ steps.increment_version.outputs.tag_name }}
+        value: ${{ jobs.build.outputs.tag_name || jobs.build-no-test.outputs.tag_name }}
 
 permissions:
   contents: write
