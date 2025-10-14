@@ -69,7 +69,7 @@ on:
 
 jobs:
   build:
-    uses: flower7c3/minecraft-addon-workflows/.github/workflows/build-and-release.yml@main
+    uses: flower7c3/minecraft-addon-github-workflows/github-workflows/build-and-release.yml@main
     with:
       project_name: "Your Project Name"
       has_test_workflow: true  # Set to false if no test workflow
@@ -102,7 +102,7 @@ The following variables are available in your release template:
 ```yaml
 jobs:
   build:
-    uses: flower7c3/minecraft-addon-workflows/.github/workflows/build-and-release.yml@main
+    uses: flower7c3/minecraft-addon-github-workflows/github-workflows/build-and-release.yml@main
     with:
       project_name: "Polish Road Signs"
       has_test_workflow: true
@@ -114,7 +114,7 @@ jobs:
 ```yaml
 jobs:
   build:
-    uses: flower7c3/minecraft-addon-workflows/.github/workflows/build-and-release.yml@main
+    uses: flower7c3/minecraft-addon-github-workflows/github-workflows/build-and-release.yml@main
     with:
       project_name: "Simple Money"
       has_test_workflow: false
