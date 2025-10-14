@@ -168,12 +168,12 @@ build_mcpack() {
   if [[ -f "$mc_pack_bp_file_path" ]]; then
     rm -rf "$mc_pack_bp_file_path" && echo "Removed old BP file version"
   fi
-  (cd "$BP_DIR" && zip -r "$(realpath "$mc_pack_bp_file_path")" . && echo "Created as '$mc_pack_bp_file_path'")
+  cd "$BP_DIR" && zip -r "$mc_pack_bp_file_path" . && echo "Created as '$mc_pack_bp_file_path'" && cd ..
 
   if [[ -f "$mc_pack_rp_file_path" ]]; then
     rm -rf "$mc_pack_rp_file_path" && echo "Removed old RP file version"
   fi
-  (cd "$RP_DIR" && zip -r "$(realpath "$mc_pack_rp_file_path")" . && echo "Created as '$mc_pack_rp_file_path'")
+  cd "$RP_DIR" && zip -r "$mc_pack_rp_file_path" . && echo "Created as '$mc_pack_rp_file_path'" && cd ..
 }
 
 install_locally() {
