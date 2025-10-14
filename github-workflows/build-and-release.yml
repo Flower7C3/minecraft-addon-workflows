@@ -33,7 +33,7 @@ jobs:
   test:
     name: Test
     if: ${{ inputs.has_test_workflow }}
-    uses: ./github-workflows/test.yml
+    uses: ./.github/workflows/test.yml
 
   build:
     name: Build
