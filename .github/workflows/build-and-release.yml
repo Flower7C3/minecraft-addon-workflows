@@ -37,8 +37,6 @@ jobs:
 
   build:
     name: Build
-    needs: [test]
-    if: ${{ always() && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.increment_version.outputs.version }}
