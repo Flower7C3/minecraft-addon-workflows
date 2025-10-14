@@ -1,0 +1,87 @@
+name: Test
+
+on:
+  workflow_call:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "🔧 Checkout code"
+        uses: actions/checkout@v4
+
+      - name: "🧪 Verify project structure"
+        run: |
+          echo "Verifying project structure..."
+          
+          # Check for required directories
+          if [ ! -d "BP" ]; then
+            echo "❌ BP directory not found"
+            exit 1
+          fi
+          
+          if [ ! -d "RP" ]; then
+            echo "❌ RP directory not found"
+            exit 1
+          fi
+          
+          # Check for required files
+          if [ ! -f "BP/manifest.json" ]; then
+            echo "❌ BP/manifest.json not found"
+            exit 1
+          fi
+          
+          if [ ! -f "RP/manifest.json" ]; then
+            echo "❌ RP/manifest.json not found"
+            exit 1
+          fi
+          
+          if [ ! -f "version.json" ]; then
+            echo "❌ version.json not found"
+            exit 1
+          fi
+          
+          # Check for release template
+          if [ ! -f ".github/templates/release.md" ]; then
+            echo "❌ .github/templates/release.md not found"
+            exit 1
+          fi
+          
+          echo "✅ Project structure verified"
+
+      - name: "🔍 Validate JSON files"
+        run: |
+          echo "Validating JSON files..."
+          
+          # Validate BP manifest
+          if ! jq empty BP/manifest.json; then
+            echo "❌ BP/manifest.json is invalid JSON"
+            exit 1
+          fi
+          
+          # Validate RP manifest
+          if ! jq empty RP/manifest.json; then
+            echo "❌ RP/manifest.json is invalid JSON"
+            exit 1
+          fi
+          
+          # Validate version.json
+          if ! jq empty version.json; then
+            echo "❌ version.json is invalid JSON"
+            exit 1
+          fi
+          
+          echo "✅ All JSON files are valid"
+
+      - name: "📊 Check project statistics"
+        run: |
+          echo "Project statistics:"
+          echo "📦 BP files: $(find BP -type f | wc -l)"
+          echo "📦 RP files: $(find RP -type f | wc -l)"
+          echo "📦 Total files: $(find BP RP -type f | wc -l)"
+          
+          if [ -d "BP/blocks" ]; then
+            echo "⏹️ Block files: $(find BP/blocks -name "*.block.json" | wc -l)"
+          fi
+          
+          echo "✅ Project statistics collected"

@@ -1,0 +1,320 @@
+name: Build and Release
+
+on:
+  workflow_call:
+    inputs:
+      project_name:
+        required: true
+        type: string
+        description: 'Name of the project for display purposes'
+      has_test_workflow:
+        required: false
+        type: boolean
+        default: false
+        description: 'Whether the project has a test workflow'
+      total_blocks:
+        required: false
+        type: boolean
+        default: false
+        description: 'Whether to include total blocks count in statistics'
+    outputs:
+      version:
+        description: 'The incremented version number'
+        value: ${{ steps.increment_version.outputs.version }}
+      tag_name:
+        description: 'The tag name for the release'
+        value: ${{ steps.increment_version.outputs.tag_name }}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  test:
+    name: Test
+    if: ${{ inputs.has_test_workflow }}
+    uses: ./.github/workflows/test.yml
+
+  build:
+    name: Build
+    needs: [test]
+    if: ${{ inputs.has_test_workflow }}
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.increment_version.outputs.version }}
+      tag_name: ${{ steps.increment_version.outputs.tag_name }}
+      bp_files: ${{ steps.get_version_stats.outputs.bp_files }}
+      rp_files: ${{ steps.get_version_stats.outputs.rp_files }}
+      total_blocks: ${{ steps.get_version_stats.outputs.total_blocks }}
+
+    steps:
+      - name: "🔧 Checkout code"
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: "🏗️ Build all packages (.mcaddon and .mcpack) with version increase"
+        run: |
+          ./minecraft-pack-build --input . --mcaddon --mcpack
+
+      - name: "🏷️ Read incremented version"
+        id: increment_version
+        run: |
+          NEW_VERSION=$(jq -r '.version | join(".")' version.json)
+          TAG_NAME="v$NEW_VERSION"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT          
+
+      - name: "📤 Upload build artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            dist/*.mcaddon
+            dist/*.mcpack
+          retention-days: 1
+      
+      - name: "📤 Upload manifests"
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifests
+          path: |
+            BP/manifest.json
+            RP/manifest.json
+          retention-days: 1
+
+      - name: "📊 Get statistics for release"
+        id: get_version_stats
+        run: |
+          BP_FILES=$(find BP -type f | wc -l)
+          RP_FILES=$(find RP -type f | wc -l)
+          
+          echo "bp_files=$BP_FILES" >> $GITHUB_OUTPUT
+          echo "rp_files=$RP_FILES" >> $GITHUB_OUTPUT
+          
+          if [ "${{ inputs.total_blocks }}" = "true" ]; then
+            TOTAL_BLOCKS=$(find BP/blocks -name "*.block.json" | wc -l)
+            echo "total_blocks=$TOTAL_BLOCKS" >> $GITHUB_OUTPUT
+            echo "⏹️ Total blocks: $TOTAL_BLOCKS"
+          else
+            echo "total_blocks=0" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "📦 BP files: $BP_FILES"
+          echo "📦 RP files: $RP_FILES"
+
+  # Build without a test workflow
+  build-no-test:
+    name: Build
+    if: ${{ !inputs.has_test_workflow }}
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.increment_version.outputs.version }}
+      tag_name: ${{ steps.increment_version.outputs.tag_name }}
+      bp_files: ${{ steps.get_version_stats.outputs.bp_files }}
+      rp_files: ${{ steps.get_version_stats.outputs.rp_files }}
+      total_blocks: ${{ steps.get_version_stats.outputs.total_blocks }}
+
+    steps:
+      - name: "🔧 Checkout code"
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: "🏗️ Build all packages (.mcaddon and .mcpack) with version increase"
+        run: |
+          ./minecraft-pack-build --input . --mcaddon --mcpack
+
+      - name: "🏷️ Read incremented version"
+        id: increment_version
+        run: |
+          NEW_VERSION=$(jq -r '.version | join(".")' version.json)
+          TAG_NAME="v$NEW_VERSION"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT          
+
+      - name: "📤 Upload build artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            dist/*.mcaddon
+            dist/*.mcpack
+          retention-days: 1
+      
+      - name: "📤 Upload manifests"
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifests
+          path: |
+            BP/manifest.json
+            RP/manifest.json
+          retention-days: 1
+
+      - name: "📊 Get statistics for release"
+        id: get_version_stats
+        run: |
+          BP_FILES=$(find BP -type f | wc -l)
+          RP_FILES=$(find RP -type f | wc -l)
+          
+          echo "bp_files=$BP_FILES" >> $GITHUB_OUTPUT
+          echo "rp_files=$RP_FILES" >> $GITHUB_OUTPUT
+          
+          if [ "${{ inputs.total_blocks }}" = "true" ]; then
+            TOTAL_BLOCKS=$(find BP/blocks -name "*.block.json" | wc -l)
+            echo "total_blocks=$TOTAL_BLOCKS" >> $GITHUB_OUTPUT
+            echo "⏹️ Total blocks: $TOTAL_BLOCKS"
+          else
+            echo "total_blocks=0" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "📦 BP files: $BP_FILES"
+          echo "📦 RP files: $RP_FILES"
+
+  # Version Control
+  version-control:
+    name: Version Control
+    needs: [build, build-no-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      commits: ${{ steps.collect_commits.outputs.commits }}
+    steps:
+      - name: "🔧 Checkout code"
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: "⚙️ Configure Git"
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: "📥 Download changed manifests"
+        uses: actions/download-artifact@v4
+        with:
+          name: manifests
+          path: ./
+  
+      - name: "📝 Collect commits since last tag"
+        id: collect_commits
+        run: |
+          # Get the last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -n "$LAST_TAG" ]; then
+            echo "Last tag: $LAST_TAG"
+            # Get commits since last tag and escape properly for GITHUB_OUTPUT
+            git log --oneline --no-merges ${LAST_TAG}..HEAD | sed 's/^/- /' > commits.txt
+            echo "commits<<EOF" >> $GITHUB_OUTPUT
+            cat commits.txt >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "✅ Collected commits from $LAST_TAG to HEAD"
+            rm -f commits.txt
+          else
+            echo "No previous tags found, getting all commits"
+            # Get all commits if no previous tags
+            git log --oneline --no-merges | sed 's/^/- /' > commits.txt
+            echo "commits<<EOF" >> $GITHUB_OUTPUT
+            cat commits.txt >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "✅ Collected all commits"
+            rm -f commits.txt
+          fi
+
+      - name: "💾 Commit version update"
+        run: |
+          if git status --porcelain | grep -q .; then
+            git add BP/manifest.json RP/manifest.json
+            git commit -m "chore: increment version to ${{ needs.build.outputs.version || needs.build-no-test.outputs.version }} [skip ci]"
+            echo "✅ Version update committed successfully"
+          else
+            echo "❌ No changes to commit - stopping workflow"
+            exit 1
+          fi
+          
+      - name: "🚀 Push version update"
+        run: |
+          git pull origin main --no-rebase -n
+          git push --force-with-lease origin main
+          echo "✅ Version update pushed to remote successfully"
+          
+      - name: "🏷️ Create and push tag"
+        run: |
+          git tag "${{ needs.build.outputs.tag_name || needs.build-no-test.outputs.tag_name }}"
+          git push --force-with-lease origin "${{ needs.build.outputs.tag_name || needs.build-no-test.outputs.tag_name }}"
+          echo "✅ Tag ${{ needs.build.outputs.tag_name || needs.build-no-test.outputs.tag_name }} created and pushed successfully"
+
+  # Create GitHub Release
+  release:
+    name: Release
+    needs: [build, build-no-test, version-control]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "🔧 Checkout code"
+        uses: actions/checkout@v4
+
+      - name: "📥 Download build artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
+
+      - name: "🧪 Test build artifacts"
+        shell: bash
+        run: |
+          echo "Testing build artifacts..."
+          if [ ! -f dist/*.mcaddon ]; then
+            echo "❌ No .mcaddon files found"
+            exit 1
+          fi
+          if [ ! -f dist/*.mcpack ]; then
+            echo "❌ No .mcpack files found"
+            exit 1
+          fi
+          echo "✅ Build artifacts present"
+
+      - name: "🔍 Test package integrity"
+        shell: bash
+        run: |
+          echo "🧪 Testing package integrity..."
+          for file in dist/*.mcaddon dist/*.mcpack; do
+            if [ -f "$file" ]; then
+              echo "🔍 Testing: $(basename "$file")"
+              unzip -t "$file" > /dev/null
+              echo "✅ Package integrity verified: $(basename "$file")"
+            fi
+          done
+          echo "🎯 All packages integrity verified successfully!"
+
+      - name: "📝 Generate release body from template"
+        id: generate_release_body
+        run: |
+          # Use awk for better separator handling
+          awk -v version="${{ needs.build.outputs.version || needs.build-no-test.outputs.version }}" \
+              -v bp_files="${{ needs.build.outputs.bp_files || needs.build-no-test.outputs.bp_files }}" \
+              -v rp_files="${{ needs.build.outputs.rp_files || needs.build-no-test.outputs.rp_files }}" \
+              -v total_blocks="${{ needs.build.outputs.total_blocks || needs.build-no-test.outputs.total_blocks }}" \
+              -v commits="${{ needs.version-control.outputs.commits }}" \
+              '{gsub(/{{ version }}/, version); 
+                gsub(/{{ bp_files }}/, bp_files); 
+                gsub(/{{ rp_files }}/, rp_files); 
+                gsub(/{{ total_blocks }}/, total_blocks); 
+                gsub(/{{ commits }}/, commits); 
+                print}' .github/templates/release.md > RELEASE_NOTE.md
+          
+          echo "✅ Release body generated from template"
+
+      - name: "🚀 Create GitHub Release"
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.build.outputs.tag_name || needs.build-no-test.outputs.tag_name }}
+          name: Release ${{ needs.build.outputs.tag_name || needs.build-no-test.outputs.tag_name }}
+          body_path: RELEASE_NOTE.md
+          files: |
+            dist/*.mcaddon
+            dist/*.mcpack
