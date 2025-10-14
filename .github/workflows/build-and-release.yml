@@ -61,7 +61,7 @@ jobs:
 
       - name: "🏗️ Build all packages (.mcaddon and .mcpack) with version increase"
         run: |
-          ./minecraft-pack-build --input . --mcaddon --mcpack
+          ./minecraft-pack-build --input . --mcaddon --mcpack --no-time
 
       - name: "🏷️ Read incremented version"
         id: increment_version
