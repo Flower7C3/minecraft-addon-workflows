@@ -138,7 +138,7 @@ get_filename() {
   if [[ "$suffix" != "" ]]; then
     name+=" $suffix"
   fi
-  echo "${OUTPUT_DIR}/${name}.${extension}"
+  echo "${OUTPUT_DIR%/}/${name}.${extension}"
 }
 
 build_mcaddon() {
@@ -241,7 +241,7 @@ APPEND_VERSION_TO_BUILD_FILE=1
 APPEND_TIME_TO_BUILD_FILE=1
 INSTALL_ON_LOCAL=0
 INPUT_DIR="/not-defined"
-OUTPUT_DIR="dist"
+OUTPUT_DIR="dist/"
 
 echo "=== Minecraft Builder ==="
 
