@@ -38,6 +38,7 @@ jobs:
   build:
     name: Build
     needs: [test]
+    if: ${{ always() && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.increment_version.outputs.version }}
@@ -112,7 +113,8 @@ jobs:
   # Version Control
   version-control:
     name: Version Control
-    needs: [build]
+    needs: [test, build]
+    if: ${{ always() && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -188,7 +190,8 @@ jobs:
   # Create GitHub Release
   release:
     name: Release
-    needs: [build, version-control]
+    needs: [test, build, version-control]
+    if: ${{ always() && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - name: "🔧 Checkout code"
