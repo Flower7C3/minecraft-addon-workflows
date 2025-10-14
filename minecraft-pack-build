@@ -127,7 +127,7 @@ bump_versions() {
 
 get_filename() {
   local extension="$1"
-  local suffix="$2"
+  local suffix="${2:-}"
   local name="$PACKNAME"
   if [[ $APPEND_VERSION_TO_BUILD_FILE -eq 1 ]]; then
     name+=" v$(get_shared_version)"
