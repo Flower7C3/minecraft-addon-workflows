@@ -87,6 +87,7 @@ jobs:
           path: |
             BP/manifest.json
             RP/manifest.json
+            version.json
           retention-days: 1
 
       - name: "📊 Get statistics for release"
@@ -165,7 +166,7 @@ jobs:
       - name: "💾 Commit version update"
         run: |
           if git status --porcelain | grep -q .; then
-            git add BP/manifest.json RP/manifest.json
+            git add BP/manifest.json RP/manifest.json version.json
             git commit -m "chore: increment version to ${{ needs.build.outputs.version }} [skip ci]"
             echo "✅ Version update committed successfully"
           else
