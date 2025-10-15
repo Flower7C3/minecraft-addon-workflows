@@ -106,7 +106,7 @@ jobs:
     name: Build and release
     uses: flower7c3/minecraft-addon-github-workflows/.github/workflows/build-and-release.yml@main
     with:
-      project_name: "Polish Road Signs"
+      project_name: "Polish road signs"
       has_test_workflow: true
       total_blocks: true
     secrets: inherit
@@ -119,7 +119,7 @@ jobs:
     name: Build and release
     uses: flower7c3/minecraft-addon-github-workflows/.github/workflows/build-and-release.yml@main
     with:
-      project_name: "Simple Money"
+      project_name: "Simple money"
       has_test_workflow: false
       total_blocks: false
     secrets: inherit
