@@ -5,7 +5,32 @@
 
 set -euo pipefail
 
-# Show detailed usage
+##----COLORS------------------------------------------------------------------------------------------------------------
+
+declare -r COLOR_BLACK="$(tput setaf 0)"
+declare -r COLOR_RED="$(tput setaf 1)"
+declare -r COLOR_GREEN="$(tput setaf 2)"
+declare -r COLOR_YELLOW="$(tput setaf 3)"
+declare -r COLOR_BLUE="$(tput setaf 4)"
+declare -r COLOR_PURPLE="$(tput setaf 5)"
+declare -r COLOR_CYAN="$(tput setaf 6)"
+declare -r COLOR_WHITE="$(tput setaf 7)"
+declare -r COLOR_OFF="$(tput setaf 9)"
+declare -r FORMAT_BOLD="$(tput bold)"
+declare -r FORMAT_RESET="$(tput sgr0)"
+declare -r ICON_INFO='ℹ'
+declare -r ICON_SUCCESS='✔'
+declare -r ICON_WARNING='⚠'
+declare -r ICON_ERROR='✘'
+declare -r LOADING_ANIMATION=(⠇ ⠋ ⠙ ⠸ ⠴ ⠦)
+declare -r LOADING_ANIMATION_FRAME_INTERVAL=0.15
+
+loading_animation_message=""
+loading_animation_timer=""
+loading_animation_pid=""
+
+##----USAGE------------------------------------------------------------------------------------------------------------
+
 show_usage() {
   echo -e "Usage: $0 [OPTIONS]"
   echo
@@ -32,7 +57,142 @@ show_usage() {
   exit 0
 }
 
-## FUNCTIONS
+##----FUNCTIONS------------------------------------------------------------------------------------------------------------
+
+function play_loading_animation_loop() {
+  while [ $# -gt 0 ]; do
+    case $1 in
+    -t | --time)
+      shift
+      loading_animation_timer="$1"
+      ;;
+    -m | --message)
+      shift
+      loading_animation_message="$1"
+      ;;
+    esac
+    shift
+  done
+  (
+    step=0
+    while true; do
+      for frame in "${LOADING_ANIMATION[@]}"; do
+        if [[ "$loading_animation_message" != "" ]]; then
+          printf "%s" "$(format_message "$COLOR_BLUE" " <b>$frame</b> $loading_animation_message")"
+          sleep "$LOADING_ANIMATION_FRAME_INTERVAL"
+        else
+          printf " waiting ${COLOR_BLUE}%s${COLOR_OFF}s" "$(echo "$loading_animation_timer - $step" | bc -z)"
+          sleep "1"
+        fi
+        step="$((step + 1))"
+        printf "\r"
+      done
+    done
+  ) &
+  loading_animation_pid=$!
+}
+
+function kill_loading_animation_loop() {
+  if [[ "$loading_animation_pid" != "" ]]; then
+    code=0
+    status=""
+    while [ $# -gt 0 ]; do
+      case $1 in
+      -c | --code)
+        shift
+        code="$1"
+        ;;
+      -s | --status)
+        shift
+        status="$1"
+        ;;
+      -m | --message)
+        shift
+        loading_animation_message="$1"
+        ;;
+      esac
+      shift
+    done
+    printf "${COLOR_OFF}\r%100s\r" ""
+    kill "$loading_animation_pid" &>/dev/null
+    if [[ "$loading_animation_message" != "" ]]; then
+      if [[ "$code" -gt "0" ]]; then
+        log_error "$loading_animation_message" "$status"
+      elif [[ "$code" -lt "0" ]]; then
+        log_warning "$loading_animation_message" "$status"
+      else
+        log_success "$loading_animation_message" "$status"
+      fi
+    fi
+    loading_animation_pid=""
+    loading_animation_message=""
+    loading_animation_timer=""
+  fi
+}
+
+function wait_moment() {
+  play_loading_animation_loop --time "$RETRY_INTERVAL"
+  sleep "$RETRY_INTERVAL"
+  kill_loading_animation_loop --code 0
+}
+
+trap "kill_loading_animation_loop;exit" SIGINT
+trap "kill_loading_animation_loop;exit" EXIT
+
+format_message() {
+  local color="$1"
+  local message="$2"
+  message=${message//<b>/${FORMAT_BOLD}${color}}
+  message=${message//<\/b>/${FORMAT_RESET}${color}}
+  message=${message//<u>/$(tput smul)${color}}
+  message=${message//<\/u>/$(tput rmul)${color}}
+  echo -e "$color$message$COLOR_OFF$FORMAT_RESET"
+}
+
+log_message() {
+  local color
+  color="$(eval echo "\$COLOR_${1}")"
+  local icon
+  icon="$(eval echo "\$ICON_${2}")"
+  local message="$3"
+  local status="${4:-""}"
+
+  if [[ "$status" != "" ]]; then
+    format_message "$color" "$(printf " <b>%s</b> %-60s [<b>%s</b>]" "$icon" "$message" "$status")"
+  else
+    format_message "$color" "$(printf " <b>%s</b> %-60s" "$icon" "$message")"
+  fi
+}
+
+log_title() {
+  local title_text="$1"
+  local title_length=${#title_text}
+  total_width=$((title_length + 4))
+  local padding=$(((total_width - title_length) / 2))
+  border="$(printf "%*s" "$total_width" "" | tr " " "═")"
+  printf "╔%s╗\n" "$border"
+  printf "║%*s%s%*s║\n" "$padding" "" "$(format_message "$COLOR_YELLOW" "<b>$title_text</b>")" "$padding" ""
+  printf "╚%s╝\n" "$border"
+}
+log_header() {
+  format_message "$COLOR_PURPLE" "$1"
+}
+log_info() {
+  log_message "BLUE" "INFO" "$1" "${2:-""}"
+}
+log_success() {
+  log_message "GREEN" "SUCCESS" "$1" "${2:-""}"
+}
+log_warning() {
+  log_message "YELLOW" "WARNING" "$1" "${2:-""}"
+}
+log_error() {
+  log_message "RED" "ERROR" "$1" "${2:-""}"
+}
+die() {
+  log_error "$1"
+  exit "${2:-1}"
+}
 
 log_usage_options_line() {
   local description="$1"
@@ -61,17 +221,17 @@ array_to_string() {
 }
 
 get_shared_version() {
-  local version_file="${INPUT_DIR}/version.json"
+  local version_file="${INPUT_DIR}version.json"
   if [[ -f "$version_file" ]]; then
     array_to_string "$(jq -r '.version' "$version_file")"
   else
     # Fallback to BP version if shared version file doesn't exist
-    array_to_string "$(jq -r '.header.version' "${INPUT_DIR}/${BP_DIR}/manifest.json")"
+    array_to_string "$(jq -r '.header.version' "${INPUT_DIR}${BP_DIR}/manifest.json")"
   fi
 }
 
 set_shared_version() {
-  local version_file="${INPUT_DIR}/version.json"
+  local version_file="${INPUT_DIR}version.json"
   local version_array="$1"
 
   # Create version.json if it doesn't exist
@@ -86,9 +246,9 @@ set_shared_version() {
 }
 
 bump_versions() {
-  local bp_path="${INPUT_DIR}/${BP_DIR}/manifest.json"
-  local rp_path="${INPUT_DIR}/${RP_DIR}/manifest.json"
-  echo "Bumping shared version for BP and RP"
+  log_info "Bumping version for BP and RP"
+  local bp_path="${INPUT_DIR}${BP_DIR}/manifest.json"
+  local rp_path="${INPUT_DIR}${RP_DIR}/manifest.json"
 
   local bp_content
   bp_content=$(cat "$bp_path")
@@ -103,26 +263,29 @@ bump_versions() {
   rp_uuid="$(echo "$rp_content" | jq -r '.header.uuid')"
 
   # Get current shared version and bump it
+  play_loading_animation_loop -m "Bumping shared version for BP and RP"
   local current_shared_version
-  current_shared_version=$(jq -r '.version' "${INPUT_DIR}/version.json" 2>/dev/null || echo '[1, 0, 0]')
+  current_shared_version=$(jq -r '.version' "${INPUT_DIR}version.json" 2>/dev/null || echo '[1, 0, 0]')
   local new_shared_version
   new_shared_version=$(echo "$current_shared_version" | jq '.[2] += 1')
 
   # Update shared version file
   set_shared_version "$new_shared_version"
-  echo "Bumped version to $(array_to_string "$new_shared_version")"
+  kill_loading_animation_loop -m "Bumped version to $(array_to_string "$new_shared_version")"
 
   # Update BP manifest
+  play_loading_animation_loop -m "Saving BP version"
   bp_content=$(echo "$bp_content" | jq --argjson ver "$new_shared_version" '.header.version = $ver')
   bp_content=$(echo "$bp_content" | jq --argjson ver "$new_shared_version" '(.dependencies[]? | select(.uuid == "'"$rp_uuid"'") | .version) = $ver')
   echo "$bp_content" >"$bp_path"
-  echo "Saved BP version"
+  kill_loading_animation_loop -m "Saved BP version"
 
   # Update RP manifest
+  play_loading_animation_loop -m "Saving RP version"
   rp_content=$(echo "$rp_content" | jq --argjson ver "$new_shared_version" '.header.version = $ver')
   rp_content=$(echo "$rp_content" | jq --argjson ver "$new_shared_version" '(.dependencies[]? | select(.uuid == "'"$bp_uuid"'") | .version) = $ver')
   echo "$rp_content" >"$rp_path"
-  echo "Saved RP version"
+  kill_loading_animation_loop -m "Saved RP version"
 }
 
 get_filename() {
@@ -142,59 +305,76 @@ get_filename() {
 }
 
 build_mcaddon() {
+  play_loading_animation_loop -m "Preparing MCADDON configuration"
   cd "$INPUT_DIR"
-  echo "Building MCAddon"
   local mc_addon_file_path
   mc_addon_file_path=$(get_filename "mcaddon")
-
   mkdir -p "$OUTPUT_DIR"
-
   if [[ -f "$mc_addon_file_path" ]]; then
-    rm -rvf "$mc_addon_file_path" && echo "Removed old file version"
+    rm -rvf "$mc_addon_file_path"
   fi
+  kill_loading_animation_loop -m "Prepared MCADDON configuration"
 
-  (zip -r "$mc_addon_file_path" "$BP_DIR" "$RP_DIR" && echo "Created as '$(realpath "$mc_addon_file_path")'")
+  log_info "Creating MCADDON"
+  if (zip -r "$mc_addon_file_path" "$BP_DIR" "$RP_DIR"); then
+    log_success "Created as <u>$mc_addon_file_path</u>"
+  else
+    log_error "Failed to create MCADDON"
+  fi
 }
 
 build_mcpack() {
+  play_loading_animation_loop -m "Preparing MCPACK configuration"
   cd "$INPUT_DIR"
-  echo "Building MCPack"
   local mc_pack_bp_file_path mc_pack_rp_file_path
   mc_pack_bp_file_path=$(get_filename "mcpack" "BP")
   mc_pack_rp_file_path=$(get_filename "mcpack" "RP")
-
   mkdir -p "$OUTPUT_DIR"
-
   if [[ -f "$mc_pack_bp_file_path" ]]; then
-    rm -rf "$mc_pack_bp_file_path" && echo "Removed old BP file version"
+    rm -rf "$mc_pack_bp_file_path"
   fi
-  (cd "$BP_DIR" && zip -r "../$mc_pack_bp_file_path" . && echo "Created as '$mc_pack_bp_file_path'")
-
   if [[ -f "$mc_pack_rp_file_path" ]]; then
-    rm -rf "$mc_pack_rp_file_path" && echo "Removed old RP file version"
+    rm -rf "$mc_pack_rp_file_path"
   fi
-  (cd "$RP_DIR" && zip -r "../$mc_pack_rp_file_path" . && echo "Created as '$mc_pack_rp_file_path'")
+  kill_loading_animation_loop -m "Prepared MCPACK configuration"
+
+  log_info "Creating behavior MCPACK"
+  if (cd "$BP_DIR" && zip -r "../$mc_pack_bp_file_path" .); then
+    log_success "Created as <u>$mc_pack_bp_file_path</u>"
+  else
+    log_error "Failed to create behavior MCPACK"
+  fi
+
+  log_info "Creating resource MCPACK"
+  if (cd "$RP_DIR" && zip -r "../$mc_pack_rp_file_path" .); then
+    log_success "Created as <u>$mc_pack_rp_file_path</u>"
+  else
+    log_error "Failed to create resource MCPACK"
+  fi
 }
 
 install_locally() {
   if [[ ! -d "$MOJANG_PATH" ]]; then
-    echo "Local mojang path does not exist: $MOJANG_PATH"
-    exit 1
+    die "Local mojang path <u>$MOJANG_PATH</u> does not exist."
   fi
+  log_info "Installing on local"
 
-  echo "Clean old packs"
+  play_loading_animation_loop -m "Cleaning old packs"
   rm -rf "${MOJANG_PATH}development_behavior_packs/"
   rm -rf "${MOJANG_PATH}development_resource_packs/"
   rm -rf "${MOJANG_PATH}behavior_packs/$PACKNAME"
   rm -rf "${MOJANG_PATH}resource_packs/$PACKNAME"
+  kill_loading_animation_loop -m "Cleaned old packs"
 
-  echo "Copying new files"
+  play_loading_animation_loop -m "Installing BP"
+  cp -r "${INPUT_DIR}${BP_DIR}" "${MOJANG_PATH}behavior_packs/$PACKNAME"
+  kill_loading_animation_loop -m "Installed BP"
 
-  cp -r "${INPUT_DIR}/${BP_DIR}" "${MOJANG_PATH}behavior_packs/$PACKNAME"
-  echo "Installed in '${MOJANG_PATH}behavior_packs/$PACKNAME'"
+  play_loading_animation_loop -m "Installing RP"
+  cp -r "${INPUT_DIR}${RP_DIR}" "${MOJANG_PATH}resource_packs/$PACKNAME"
+  kill_loading_animation_loop -m "Installed RP"
 
-  cp -r "${INPUT_DIR}/${RP_DIR}" "${MOJANG_PATH}resource_packs/$PACKNAME"
-  echo "Installed in '${MOJANG_PATH}resource_packs/$PACKNAME'"
+  log_success "Copied files to <u>$MOJANG_PATH</u> directory"
 }
 
 parse_arguments() {
@@ -217,13 +397,13 @@ parse_arguments() {
     --no-time) APPEND_TIME_TO_BUILD_FILE=0 ;;
     -h | --help) show_usage ;;
     *)
-      echo -e "Unknown option: $1"
+      log_error "Unknown option: <b>$1</b>"
       show_usage
       ;;
     esac
     shift
   done
-
+  INPUT_DIR="${INPUT_DIR%/}/"
 }
 
 ## CONFIGURATION
@@ -243,23 +423,36 @@ INSTALL_ON_LOCAL=0
 INPUT_DIR="/not-defined"
 OUTPUT_DIR="dist/"
 
-echo "=== Minecraft Builder ==="
+log_title "Minecraft Builder"
 
 parse_arguments "$@"
 
 if [[ $MCADDON -ne 1 && $MCPACK -ne 1 && $INSTALL_ON_LOCAL -ne 1 ]]; then
-  echo -e "No build options selected."
+  log_error "No build options selected."
   show_usage
 fi
 
 if [[ ! -d "$INPUT_DIR" ]]; then
-  echo -e "Source directory does not exist: $INPUT_DIR"
+  log_error "Source directory <u>$INPUT_DIR</u> does not exist."
+  exit 1
+fi
+
+if [[ ! -f "${INPUT_DIR}version.json" ]] ; then
+  log_error "Source directory <u>${INPUT_DIR}</u> does not contain <u>version.json</u> file."
+  exit 1
+fi
+if [[ ! -f "${INPUT_DIR}${BP_DIR}manifest.json" ]] ; then
+  log_error "Source directory <u>${INPUT_DIR}${BP_DIR}</u> does not contain <u>manifest.json</u> file."
+  exit 1
+fi
+if  [[ ! -f "${INPUT_DIR}${RP_DIR}manifest.json" ]]; then
+  log_error "Source directory <u>${INPUT_DIR}${RP_DIR}</u> does not contain <u>manifest.json</u> file."
   exit 1
 fi
 
 PACKNAME="$(cd "$INPUT_DIR" && basename "$(pwd)")"
 PACKNAME="$(to_title_case "$PACKNAME")"
-echo -e "Building Minecraft packs for '$PACKNAME' project"
+log_header "Building Minecraft packs for <b>$PACKNAME</b> project"
 if [[ $VERSION_BUMP -eq 1 ]]; then
   bump_versions
 fi

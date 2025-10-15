@@ -125,6 +125,15 @@ jobs:
     secrets: inherit
 ```
 
+## Standalone usage
+
+You can use script for Your local builds. Download it and install locally.
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/flower7c3/minecraft-addon-workflows/main/minecraft-pack-build -o ~/.local/bin/minecraft-pack-build
+chmod +x ~/.local/bin/minecraft-pack-build
+```
+
 ## Dependencies
 
 - `minecraft-pack-build` - Local script for building Minecraft addons (included in repository)
