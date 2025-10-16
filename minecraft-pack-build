@@ -94,6 +94,8 @@ function play_loading_animation_loop() {
 
 function kill_loading_animation_loop() {
   if [[ "$loading_animation_pid" != "" ]]; then
+    kill "$loading_animation_pid" &>/dev/null
+    printf "${COLOR_OFF}\r%100s\r" ""
     code=0
     status=""
     while [ $# -gt 0 ]; do
@@ -113,8 +115,6 @@ function kill_loading_animation_loop() {
       esac
       shift
     done
-    printf "${COLOR_OFF}\r%100s\r" ""
-    kill "$loading_animation_pid" &>/dev/null
     if [[ "$loading_animation_message" != "" ]]; then
       if [[ "$code" -gt "0" ]]; then
         log_error "$loading_animation_message" "$status"
@@ -156,11 +156,14 @@ log_message() {
   icon="$(eval echo "\$ICON_${2}")"
   local message="$3"
   local status="${4:-""}"
-
+  local len=32
+  if [[ "${#message}" -gt "$len" ]]; then
+    len="$(($#message + 4))"
+  fi
   if [[ "$status" != "" ]]; then
-    format_message "$color" "$(printf " <b>%s</b> %-60s [<b>%s</b>]" "$icon" "$message" "$status")"
+    format_message "$color" "$(printf " <b>%s</b> %-*s [<b>%s</b>]" "$icon" "$len" "$message" "$status")"
   else
-    format_message "$color" "$(printf " <b>%s</b> %-60s" "$icon" "$message")"
+    format_message "$color" "$(printf " <b>%s</b> %-*s" "$icon" $len "$message")"
   fi
 }
 
@@ -204,7 +207,7 @@ log_usage_options_line() {
 
 get_version_string() {
   # shellcheck disable=SC2317
-  array_to_string "$(jq -r '.header.version' "$1/manifest.json")"
+  array_to_string "$(jq -r '.header.version' "${1}manifest.json")"
 }
 
 get_version() {
@@ -225,8 +228,7 @@ get_shared_version() {
   if [[ -f "$version_file" ]]; then
     array_to_string "$(jq -r '.version' "$version_file")"
   else
-    # Fallback to BP version if shared version file doesn't exist
-    array_to_string "$(jq -r '.header.version' "${INPUT_DIR}${BP_DIR}/manifest.json")"
+    die "Version <b>$version_file</b> file not found"
   fi
 }
 
@@ -247,8 +249,8 @@ set_shared_version() {
 
 bump_versions() {
   log_info "Bumping version for BP and RP"
-  local bp_path="${INPUT_DIR}${BP_DIR}/manifest.json"
-  local rp_path="${INPUT_DIR}${RP_DIR}/manifest.json"
+  local bp_path="${INPUT_DIR}${BP_DIR}manifest.json"
+  local rp_path="${INPUT_DIR}${RP_DIR}manifest.json"
 
   local bp_content
   bp_content=$(cat "$bp_path")
@@ -301,55 +303,59 @@ get_filename() {
   if [[ "$suffix" != "" ]]; then
     name+=" $suffix"
   fi
-  echo "${OUTPUT_DIR%/}/${name}.${extension}"
+  echo "${name}.${extension}"
+}
+
+get_output_dir_name() {
+  echo "$(realpath "${OUTPUT_DIR%/}")/"
 }
 
 build_mcaddon() {
   play_loading_animation_loop -m "Preparing MCADDON configuration"
-  cd "$INPUT_DIR"
-  local mc_addon_file_path
-  mc_addon_file_path=$(get_filename "mcaddon")
-  mkdir -p "$OUTPUT_DIR"
-  if [[ -f "$mc_addon_file_path" ]]; then
-    rm -rvf "$mc_addon_file_path"
+  local _mc_addon_file_path _get_output_dir_name
+  _get_output_dir_name="$(get_output_dir_name)"
+  _mc_addon_file_path="$(get_filename "mcaddon")"
+  mkdir -p "$_get_output_dir_name"
+  if [[ -f "$_get_output_dir_name$_mc_addon_file_path" ]]; then
+    rm -rvf "$_get_output_dir_name$_mc_addon_file_path"
   fi
   kill_loading_animation_loop -m "Prepared MCADDON configuration"
 
-  log_info "Creating MCADDON"
-  if (zip -r "$mc_addon_file_path" "$BP_DIR" "$RP_DIR"); then
-    log_success "Created as <u>$mc_addon_file_path</u>"
+  play_loading_animation_loop -m "Creating MCADDON"
+  if (cd "$INPUT_DIR" && zip -qr "$_get_output_dir_name$_mc_addon_file_path" "$BP_DIR" "$RP_DIR"); then
+    kill_loading_animation_loop -m "Created MCADDON" -s "$_get_output_dir_name$_mc_addon_file_path"
   else
-    log_error "Failed to create MCADDON"
+    kill_loading_animation_loop -m "Failed to create MCADDON" -c "$?"
   fi
 }
 
 build_mcpack() {
   play_loading_animation_loop -m "Preparing MCPACK configuration"
-  cd "$INPUT_DIR"
-  local mc_pack_bp_file_path mc_pack_rp_file_path
-  mc_pack_bp_file_path=$(get_filename "mcpack" "BP")
-  mc_pack_rp_file_path=$(get_filename "mcpack" "RP")
-  mkdir -p "$OUTPUT_DIR"
-  if [[ -f "$mc_pack_bp_file_path" ]]; then
-    rm -rf "$mc_pack_bp_file_path"
+  local _mc_pack_bp_file_path _mc_pack_rp_file_path _get_output_dir_name
+  _get_output_dir_name="$(get_output_dir_name)"
+  _mc_pack_bp_file_path="$(get_filename "mcpack" "BP")"
+  _mc_pack_rp_file_path="$(get_filename "mcpack" "RP")"
+  mkdir -p "$_get_output_dir_name"
+  if [[ -f "$_get_output_dir_name$_mc_pack_bp_file_path" ]]; then
+    rm -rf "$_get_output_dir_name$_mc_pack_bp_file_path"
   fi
-  if [[ -f "$mc_pack_rp_file_path" ]]; then
-    rm -rf "$mc_pack_rp_file_path"
+  if [[ -f "$_get_output_dir_name$_mc_pack_rp_file_path" ]]; then
+    rm -rf "$_get_output_dir_name$_mc_pack_rp_file_path"
   fi
   kill_loading_animation_loop -m "Prepared MCPACK configuration"
 
-  log_info "Creating behavior MCPACK"
-  if (cd "$BP_DIR" && zip -r "../$mc_pack_bp_file_path" .); then
-    log_success "Created as <u>$mc_pack_bp_file_path</u>"
+  play_loading_animation_loop -m "Creating behavior MCPACK"
+  if (cd "$INPUT_DIR$BP_DIR" && zip -qr "$_get_output_dir_name$_mc_pack_bp_file_path" .); then
+    kill_loading_animation_loop -m "Created behavior MCPACK" -s "$_get_output_dir_name$_mc_pack_bp_file_path"
   else
-    log_error "Failed to create behavior MCPACK"
+    kill_loading_animation_loop -m "Failed to create behavior MCPACK" -c "$?"
   fi
 
-  log_info "Creating resource MCPACK"
-  if (cd "$RP_DIR" && zip -r "../$mc_pack_rp_file_path" .); then
-    log_success "Created as <u>$mc_pack_rp_file_path</u>"
+  play_loading_animation_loop -m "Creating resource MCPACK"
+  if (cd "$INPUT_DIR$RP_DIR" && zip -qr "$_get_output_dir_name$_mc_pack_rp_file_path" .); then
+    kill_loading_animation_loop -m "Created resource MCPACK" -s "$_get_output_dir_name$_mc_pack_rp_file_path"
   else
-    log_error "Failed to create resource MCPACK"
+    kill_loading_animation_loop -m "Failed to create resource MCPACK" -c "$?"
   fi
 }
 
@@ -357,44 +363,54 @@ install_locally() {
   if [[ ! -d "$MOJANG_PATH" ]]; then
     die "Local mojang path <u>$MOJANG_PATH</u> does not exist."
   fi
-  log_info "Installing on local"
 
-  play_loading_animation_loop -m "Cleaning old packs"
-  rm -rf "${MOJANG_PATH}development_behavior_packs/"
-  rm -rf "${MOJANG_PATH}development_resource_packs/"
-  rm -rf "${MOJANG_PATH}behavior_packs/$PACKNAME"
-  rm -rf "${MOJANG_PATH}resource_packs/$PACKNAME"
-  kill_loading_animation_loop -m "Cleaned old packs"
+  #  log_info "Installing on local"
 
-  play_loading_animation_loop -m "Installing BP"
-  cp -r "${INPUT_DIR}${BP_DIR}" "${MOJANG_PATH}behavior_packs/$PACKNAME"
-  kill_loading_animation_loop -m "Installed BP"
+  #  play_loading_animation_loop -m "Cleaning old packs"
+  #  rm -rf "${MOJANG_PATH}behavior_packs/${PACKNAME} BP"
+  #  rm -rf "${MOJANG_PATH}resource_packs/${PACKNAME} RP"
+  #  kill_loading_animation_loop -m "Cleaned old packs"
 
-  play_loading_animation_loop -m "Installing RP"
-  cp -r "${INPUT_DIR}${RP_DIR}" "${MOJANG_PATH}resource_packs/$PACKNAME"
-  kill_loading_animation_loop -m "Installed RP"
+  local _mc_pack_bp_file_path _mc_pack_rp_file_path _get_output_dir_name
+  _get_output_dir_name="$(get_output_dir_name)"
+  _mc_pack_bp_file_path="$(get_filename "mcpack" "BP")"
+  _mc_pack_rp_file_path="$(get_filename "mcpack" "RP")"
 
-  log_success "Copied files to <u>$MOJANG_PATH</u> directory"
+  play_loading_animation_loop -m "Installing BP on local"
+  mkdir -p "${MOJANG_PATH}behavior_packs/"
+  cp -r "$_get_output_dir_name$_mc_pack_bp_file_path" "${MOJANG_PATH}behavior_packs/"
+  #  cp -rv "${INPUT_DIR}${BP_DIR}" "${MOJANG_PATH}behavior_packs/${PACKNAME} BP"
+  #  rsync -av --delete "${INPUT_DIR}${BP_DIR}manifest.json" "${MOJANG_PATH}behavior_packs/${PACKNAME} BP/"
+  #  diff "${INPUT_DIR}${BP_DIR}manifest.json" "${MOJANG_PATH}behavior_packs/${PACKNAME} BP/manifest.json"
+  kill_loading_animation_loop -m "Installed BP on local" -s "$MOJANG_PATH"
+
+  play_loading_animation_loop - "Installing RP on local"
+  mkdir -p "${MOJANG_PATH}resource_packs/"
+  cp -r "$_get_output_dir_name$_mc_pack_rp_file_path" "${MOJANG_PATH}resource_packs/"
+  #  cp -rv "${INPUT_DIR}${RP_DIR}" "${MOJANG_PATH}resource_packs/${PACKNAME} RP"
+  #  rsync -av --delete "${INPUT_DIR}${RP_DIR}manifest.json" "${MOJANG_PATH}resource_packs/${PACKNAME} RP/"
+  #  diff "${INPUT_DIR}${RP_DIR}manifest.json" "${MOJANG_PATH}resource_packs/${PACKNAME} RP/manifest.json"
+  kill_loading_animation_loop -m "Installed RP on local" -s "$MOJANG_PATH"
 }
 
 parse_arguments() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-    --input | -i)
+    -i | --input)
       INPUT_DIR="$2"
       OUTPUT_DIR="$2/dist/"
       shift
       ;;
-    --output | -o)
+    -o | --output)
       OUTPUT_DIR="$(realpath "$2")"
       shift
       ;;
-    --mcaddon | -a) MCADDON=1 ;;
-    --mcpack | -p) MCPACK=1 ;;
-    --local-installation | -l) INSTALL_ON_LOCAL=1 ;;
-    --no-bump | -b) VERSION_BUMP=0 ;;
-    --no-version | -v) APPEND_VERSION_TO_BUILD_FILE=0 ;;
-    --no-time) APPEND_TIME_TO_BUILD_FILE=0 ;;
+    -a | --mcaddon) MCADDON=1 ;;
+    -p | --mcpack) MCPACK=1 ;;
+    -l | --local-installation) INSTALL_ON_LOCAL=1 ;;
+    -b | --no-bump) VERSION_BUMP=0 ;;
+    -v | --no-version) APPEND_VERSION_TO_BUILD_FILE=0 ;;
+    -t | --no-time) APPEND_TIME_TO_BUILD_FILE=0 ;;
     -h | --help) show_usage ;;
     *)
       log_error "Unknown option: <b>$1</b>"
@@ -437,15 +453,15 @@ if [[ ! -d "$INPUT_DIR" ]]; then
   exit 1
 fi
 
-if [[ ! -f "${INPUT_DIR}version.json" ]] ; then
+if [[ ! -f "${INPUT_DIR}version.json" ]]; then
   log_error "Source directory <u>${INPUT_DIR}</u> does not contain <u>version.json</u> file."
   exit 1
 fi
-if [[ ! -f "${INPUT_DIR}${BP_DIR}manifest.json" ]] ; then
+if [[ ! -f "${INPUT_DIR}${BP_DIR}manifest.json" ]]; then
   log_error "Source directory <u>${INPUT_DIR}${BP_DIR}</u> does not contain <u>manifest.json</u> file."
   exit 1
 fi
-if  [[ ! -f "${INPUT_DIR}${RP_DIR}manifest.json" ]]; then
+if [[ ! -f "${INPUT_DIR}${RP_DIR}manifest.json" ]]; then
   log_error "Source directory <u>${INPUT_DIR}${RP_DIR}</u> does not contain <u>manifest.json</u> file."
   exit 1
 fi
@@ -463,5 +479,8 @@ if [[ $MCPACK -eq 1 ]]; then
   build_mcpack
 fi
 if [[ $INSTALL_ON_LOCAL -eq 1 ]]; then
+  if [[ $MCPACK -eq 0 ]]; then
+    build_mcpack
+  fi
   install_locally
 fi
