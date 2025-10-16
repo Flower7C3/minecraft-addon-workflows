@@ -132,6 +132,7 @@ You can use script for Your local builds. Download it and install locally.
 ```shell
 curl -fsSL https://raw.githubusercontent.com/flower7c3/minecraft-addon-workflows/main/minecraft-pack-build -o ~/.local/bin/minecraft-pack-build
 chmod +x ~/.local/bin/minecraft-pack-build
+TERM=xterm-256color minecraft-pack-build
 ```
 
 ## Dependencies
