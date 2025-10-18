@@ -264,8 +264,10 @@ log_usage_example_line() {
 
 # Die with error message
 die() {
+  local _error_code="$1"
+  shift
   log_error "$@"
-  exit 1
+  exit "$_error_code"
 }
 
 ##----Loading animation------------------------------------------------------------------------------------------------------------
@@ -281,6 +283,7 @@ play_loading_animation_loop() {
       shift
       loading_animation_message="$1"
       ;;
+    *) break ;;
     esac
     shift
   done
@@ -289,7 +292,7 @@ play_loading_animation_loop() {
     while true; do
       for _frame in "${LOADING_ANIMATION[@]}"; do
         if [[ "$loading_animation_message" != "" ]]; then
-          log_message --color "CYAN" --one-line --icon "$_frame" "$loading_animation_message"
+          log_message --color "CYAN" --one-line --icon "$_frame" "$loading_animation_message" "$@"
           sleep "$LOADING_ANIMATION_FRAME_INTERVAL"
         else
           log_message --color "CYAN" --one-line "waiting %s" "$(echo "$loading_animation_timer - $_step" | bc -z)"
@@ -323,16 +326,17 @@ kill_loading_animation_loop() {
         shift
         loading_animation_message="$1"
         ;;
+      *) break ;;
       esac
       shift
     done
     if [[ "$loading_animation_message" != "" ]]; then
       if [[ "$code" -gt "0" ]]; then
-        log_error --status "$status" "$loading_animation_message"
+        log_error --status "$status" "$loading_animation_message" "$@"
       elif [[ "$code" -lt "0" ]]; then
-        log_warning --status "$status" "$loading_animation_message"
+        log_warning --status "$status" "$loading_animation_message" "$@"
       else
-        log_success --status "$status" "$loading_animation_message"
+        log_success --status "$status" "$loading_animation_message" "$@"
       fi
     fi
     loading_animation_pid=""
@@ -352,12 +356,8 @@ trap "kill_loading_animation_loop;exit" EXIT
 
 ##----Helpers------------------------------------------------------------------------------------------------------------
 
-to_title_case() {
-  echo "$1" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++){sub(/./,toupper(substr($i,1,1)),$i)}print}'
-}
-
-array_to_string() {
-  echo "$1" | jq -r 'join(".")'
+normalize_name() {
+  echo "$1" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++){sub(/./,toupper(substr($i,1,1)),$i)}print}' | sed 's/Minecraft Bedrock Addon//g' | sed 's/  / /g'
 }
 
 get_wildcard_filename() {
@@ -386,6 +386,10 @@ get_output_dir_name() {
   echo "$(realpath "${OUTPUT_DIR%/}")/"
 }
 
+array_to_string() {
+  echo "$1" | jq -r 'join(".")'
+}
+
 ##----Version------------------------------------------------------------------------------------------------------------
 
 get_version_string() {
@@ -403,7 +407,7 @@ get_shared_version() {
   if [[ -f "$_version_file" ]]; then
     array_to_string "$(jq -r '.version' "$_version_file")"
   else
-    die "Version <b>$_version_file</b> file not found" 31
+    die 31 "Version file not found: <b>%s</b>." "$_version_file"
   fi
 }
 
@@ -448,7 +452,7 @@ bump_versions() {
 
   # Update shared version file
   set_shared_version "$_new_shared_version"
-  kill_loading_animation_loop -m "Bumped version to $(array_to_string "$_new_shared_version")"
+  kill_loading_animation_loop -m "Bumped version to %s" "$(array_to_string "$_new_shared_version")"
 
   # Update BP manifest
   play_loading_animation_loop -m "Saving BP version"
@@ -506,7 +510,7 @@ build_mcpack() {
 
 install_locally() {
   if [[ ! -d "$MOJANG_DIR" ]]; then
-    die "Local mojang path <u>$MOJANG_DIR</u> does not exist." 32
+    die 32 "Local mojang path does not exist: <u>%s</u>." "$MOJANG_DIR"
   fi
 
   play_loading_animation_loop -m "Preparing installation"
@@ -573,6 +577,29 @@ parse_arguments() {
   fi
 }
 
+##----Checking------------------------------------------------------------------------------------------------------------
+
+# Check if command exists
+command_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+check_dependencies() {
+  local deps=("$@")
+  local missing_deps=()
+
+  for dep in "${deps[@]}"; do
+    if ! command_exists "$dep"; then
+      missing_deps+=("$dep")
+    fi
+  done
+
+  if [[ ${#missing_deps[@]} -gt 0 ]]; then
+    missing_items="$(printf "<b>%s</b>, " "${missing_deps[@]}")"
+    die 33 "Missing dependencies: %s. Please install them and try again." "${missing_items::-2}"
+  fi
+}
+
 ## ##----Configuration------------------------------------------------------------------------------------------------------------
 
 declare -r BP_DIR="BP/"
@@ -602,38 +629,37 @@ if [[ $MCADDON -ne 1 && $MCPACK -ne 1 && $INSTALL_ON_LOCAL -ne 1 ]]; then
   show_usage
 fi
 if [[ -z "$INPUT_DIR" ]]; then
-  die "Source directory is not defined." 11
+  die 11 "Source directory is not defined."
 fi
 if [[ ! -d "$INPUT_DIR" ]]; then
-  die "Source directory <u>$INPUT_DIR</u> does not exist." 12
+  die 12 "Source directory <u>%s</u> does not exist." "$INPUT_DIR"
 fi
 if [[ ! -d "$OUTPUT_DIR" ]]; then
   if [[ "$OUTPUT_DIR_FORCE" -eq 1 ]]; then
     mkdir "$OUTPUT_DIR"
     log_info "Created output directory" "$OUTPUT_DIR"
   else
-    die "Output directory <u>$OUTPUT_DIR</u> does not exist. Add <b>--force</b> argument to create missing directory or give another." 13
+    die 13 "Output directory does not exist: <u>%s</u>. Add <b>--force</b> argument to create missing directory or give another." "$OUTPUT_DIR"
   fi
 fi
 if [[ $INSTALL_ON_LOCAL -eq 1 ]] && [[ ! -d "$MOJANG_DIR" ]]; then
-  die "Mojang directory <u>$MOJANG_DIR</u> does not exist." 14
+  die 14 "Mojang directory does not exist: <u>%s</u>." "$MOJANG_DIR"
 
 fi
 
 GET_OUTPUT_DIR_NAME="$(get_output_dir_name)"
 if [[ ! -f "${INPUT_DIR}version.json" ]]; then
-  die "Source directory <u>${INPUT_DIR}</u> does not contain <u>version.json</u> file." 21
+  die 21 "Source directory does not contain <u>version.json</u> file: <u>%s</u>" "$INPUT_DIR"
 fi
 if [[ ! -f "${INPUT_DIR}${BP_DIR}manifest.json" ]]; then
-  die "Source directory <u>${INPUT_DIR}${BP_DIR}</u> does not contain <u>manifest.json</u> file." 22
+  die 22 "Source directory does not contain <u>manifest.json</u> file: <u>%s</u>" "${INPUT_DIR}${BP_DIR}"
 fi
 if [[ ! -f "${INPUT_DIR}${RP_DIR}manifest.json" ]]; then
-  die "Source directory <u>${INPUT_DIR}${RP_DIR}</u> does not contain <u>manifest.json</u> file." 23
+  die 23 "Source directory does not contain <u>manifest.json</u> file: <u>%s</u>." "${INPUT_DIR}${RP_DIR}"
 fi
 
-PACKNAME="$(cd "$INPUT_DIR" && basename "$(pwd)")"
-PACKNAME="$(to_title_case "$PACKNAME")"
-log_header "Building Minecraft packs for <b>$PACKNAME</b> project"
+PACKNAME="$(normalize_name "$(cd "$INPUT_DIR" && basename "$(pwd)")")"
+log_header "Building Minecraft packs for <b>%s</b> project" "$PACKNAME"
 
 if [[ $VERSION_BUMP -eq 1 ]]; then
   bump_versions
