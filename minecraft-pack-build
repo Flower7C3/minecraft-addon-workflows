@@ -11,29 +11,40 @@ export TERM=xterm-256color
 ##----USAGE------------------------------------------------------------------------------------------------------------
 
 show_usage() {
-  log_usage_line "$0 [OPTIONS]"
+  log_usage_title '[OPTIONS]'
   echo
-  log_header "Options"
-  log_usage_options_line "input directory location" "-i" "--input DIR"
-  log_usage_options_line "output directory location (only for creating mcpack or mcaddon files)" "-o" "--output DIR"
-  log_usage_options_line "force creation of output directory" "-f" "--force"
-  log_usage_options_line "Mojang directory location, default: <u>$MOJANG_DIR</u>" "-m" "--mojang DIR"
+  log_header 'Options'
+  log_usage_options_line '-i;--input DIR' \
+    'input directory location'
+  log_usage_options_line '-o;--output DIR' \
+    'output directory location (only for creating mcpack or mcaddon files)'
+  log_usage_options_line '-f;--force' \
+    'force creation of output directory'
+  log_usage_options_line '-m;--mojang DIR' \
+    'Mojang directory location, default: <u>%s</u>' "$MOJANG_DIR"
   echo
-  log_header "Build options"
-  log_usage_options_line "create mcaddon file" "-a" "--mcaddon"
-  log_usage_options_line "create mcpack files" "-p" "--mcpack"
-  log_usage_options_line "install addon to local Minecraft folder" "-l" "--local-installation"
+  log_header 'Build options'
+  log_usage_options_line '-a;--mcaddon' \
+    'create mcaddon file'
+  log_usage_options_line '-p;--mcpack' \
+    'create mcpack files'
+  log_usage_options_line '-l;--local-installation' \
+    'install addon to local Minecraft folder'
   echo
-  log_header "Build modes"
-  log_usage_options_line "do not bump package version" "-b" "--no-bump"
-  log_usage_options_line "do not add version to built file names" "-v" "--no-version"
-  log_usage_options_line "do not add datetime to built file names" "-t" "--no-time"
-  log_usage_options_line "show this help message" "-h" "--help"
+  log_header 'Build modes'
+  log_usage_options_line '-b;--no-bump' \
+    'do not bump package version'
+  log_usage_options_line '-v;--no-version' \
+    'do not add version to built file names'
+  log_usage_options_line '-t;--no-time' \
+    'do not add datetime to built file names'
+  log_usage_options_line '-h;--help' \
+    'show this help message'
   echo
-  log_header "Examples"
-  log_usage_example_line "$0 --input ./my-pack --mcaddon"
-  log_usage_example_line "$0 -i ./my-pack -o ./builds --mcpack --no-bump"
-  log_usage_example_line "$0 -i ./my-pack --local-installation"
+  log_header 'Examples'
+  log_usage_example_line '--input ./my-pack --mcaddon'
+  log_usage_example_line '-i ./my-pack -o ./builds --mcpack --no-bump'
+  log_usage_example_line '-i ./my-pack --local-installation'
   echo
   exit 0
 }
@@ -113,7 +124,7 @@ log_message() {
     _text=${_text//<\/b>/$(styler reset)${_color_value}}
     _text=${_text//<u>/$(tput smul)${_color_value}}
     _text=${_text//<\/u>/$(tput rmul)${_color_value}}
-    _text=${_text//<code>/$(styler bg "CYAN")$(styler text "BLACK")}
+    _text=${_text//<code>/$(styler bg 'CYAN')$(styler text 'BLACK')}
     _text=${_text//<\/code>/$(styler reset)${_color_value}}
     echo -e "$_text"
   }
@@ -159,7 +170,7 @@ log_message() {
   # shellcheck disable=SC2059
   _text="$(_text_format "$_color_value" "$@")"
   if [[ -n "$_icon" ]]; then
-    _text="$(_text_format "$_color_value" " <b>%s</b> %s" "$_icon" "$_text")"
+    _text="$(_text_format "$_color_value" ' <b>%s</b> %s' "$_icon" "$_text")"
   fi
   if [[ -n "$_status" ]]; then
     local _raw_bytes
@@ -169,7 +180,7 @@ log_message() {
     local _text_chars
     _text_chars="$(echo -n "$_text" | wc -m | tr -d ' ')"
     local _padding=$((64 + (_text_bytes - _text_chars) + (_text_bytes - _raw_bytes)))
-    _text="$(_text_format "$_color_value" "%-*s [<b>%s</b>]" "$_padding" "$_text" "$_status")"
+    _text="$(_text_format "$_color_value" '%-*s [<b>%s</b>]' "$_padding" "$_text" "$_status")"
   fi
   echo -e -n "${_line_prepend}${_color_value}${_text}${_line_append}$(styler reset)"
 }
@@ -211,12 +222,12 @@ log_warning() {
 }
 
 log_error() {
-  prepare_log_message "RED" "$ICON_ERROR" "$@"
+  prepare_log_message 'RED' "$ICON_ERROR" "$@"
 }
 
 log_debug() {
   if [[ "${DEBUG:-0}" == "1" || "${debug:-0}" == "1" ]]; then
-    prepare_log_message "PURPLE" "$ICON_DEBUG" "$@"
+    prepare_log_message 'PURPLE' "$ICON_DEBUG" "$@"
   fi
 }
 
@@ -241,29 +252,34 @@ log_title() {
   fi
   local _padding=$(((_total_width - _title_length) / 2))
 
-  log_message --color "WHITE" "<b>╔%s╗</b>" "$(printf "═%.0s" $(seq 1 1 $_total_width))"
-  log_message --color "WHITE" "<b>║%*s$(styler text "YELLOW")%s%*s$(styler text "WHITE")║</b>" "$_padding" " " "$_title_text" "$_padding" " "
-  log_message --color "WHITE" "<b>╚%s╝</b>" "$(printf "═%.0s" $(seq 1 1 $_total_width))"
+  log_message --color 'WHITE' '<b>╔%s╗</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
+  log_message --color 'WHITE' "<b>║%*s$(styler text "YELLOW")%s%*s$(styler text "WHITE")║</b>" "$_padding" " " "$_title_text" "$_padding" " "
+  log_message --color 'WHITE' '<b>╚%s╝</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
 }
 
 log_header() {
-  log_message --color "PURPLE" "<b>%s</b>" "$1"
+  log_message --color 'PURPLE' '<b>%s</b>' "$1"
 }
 
-log_usage_line() {
-  log_message --color "PURPLE" "<b>Usage</b> <code>$*</code>"
+log_usage_title() {
+  log_message --color 'PURPLE' '<b>Usage</b> <code>%s %s</code>' "$0" "$*"
 }
 
 log_usage_options_line() {
-  local _description="$1"
-  shift
   local _parameters
-  _parameters="$(printf "%s, " "$@")"
-  log_message '  <b>%-*s</b> %s' "30" "${_parameters::-2}" "$_description"
+  IFS=';' read -r -a _parameters <<<"$1"
+  shift
+  local _parameters_list
+  _parameters_list="$(printf '<b>%s</b>, ' "${_parameters[@]}")"
+  local _options
+  _options="$(printf '  %-*s' "$((30 + 7 * ${#_parameters[@]}))" "${_parameters_list::-2}")"
+  local _message="$1"
+  shift
+  log_message "${_options} ${_message}" "$@"
 }
 
 log_usage_example_line() {
-  log_message --color 'CYAN' --icon ' $' '<code>%s</code>' "$@"
+  log_message --color 'CYAN' --icon ' $' '<code>%s %s</code>' "$0" "$*"
 }
 
 # Die with error message
@@ -327,10 +343,10 @@ loading_animation_loop() {
       while true; do
         for _frame in "${LOADING_ANIMATION[@]}"; do
           if [[ -n "$loading_animation_message" ]]; then
-            log_message --color "CYAN" --one-line --icon "$_frame" "$loading_animation_message"
+            log_message --color 'CYAN' --one-line --icon "$_frame" "$loading_animation_message"
             sleep "$LOADING_ANIMATION_FRAME_INTERVAL"
           else
-            log_message --color "CYAN" --one-line "waiting %s" "$(echo "$countdown - $_step" | bc -z)"
+            log_message --color 'CYAN' --one-line 'waiting %s' "$(echo "$countdown - $_step" | bc -z)"
             sleep "1"
           fi
           _step="$((_step + 1))"
@@ -350,6 +366,30 @@ wait_moment() {
 
 trap "loading_animation_loop -x;exit" SIGINT
 trap "loading_animation_loop -x;exit" EXIT
+
+##----Checking------------------------------------------------------------------------------------------------------------
+
+# Check if command exists
+command_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+check_dependencies() {
+  local _deps=("$@")
+  local _missing_deps=()
+  local _missing_items
+
+  for dep in "${_deps[@]}"; do
+    if ! command_exists "$dep"; then
+      _missing_deps+=("$dep")
+    fi
+  done
+
+  if [[ ${#_missing_deps[@]} -gt 0 ]]; then
+    _missing_items="$(printf '<b>%s</b>, ' "${_missing_deps[@]}")"
+    die 13 'Missing dependencies: %s. Please install them and try again.' "${_missing_items::-2}"
+  fi
+}
 
 ##----Helpers------------------------------------------------------------------------------------------------------------
 
@@ -371,7 +411,7 @@ get_filename() {
     _name+=" v$(get_shared_version)"
   fi
   if [[ $APPEND_TIME_TO_BUILD_FILE -eq 1 ]]; then
-    _name+=" $(date +"%Y%m%d%H%M%S")"
+    _name+=" $(date +'%Y%m%d%H%M%S')"
   fi
   if [[ "$_suffix" != "" ]]; then
     _name+=" $_suffix"
@@ -404,7 +444,7 @@ get_shared_version() {
   if [[ -f "$_version_file" ]]; then
     array_to_string "$(jq -r '.version' "$_version_file")"
   else
-    die 31 "Version file not found: <b>%s</b>." "$_version_file"
+    die 31 'Version file not found: <b>%s</b>.' "$_version_file"
   fi
 }
 
@@ -424,7 +464,7 @@ set_shared_version() {
 }
 
 bump_versions() {
-  log_info "Bumping version for BP and RP"
+  log_info 'Bumping version for BP and RP'
   local _bp_path="${INPUT_DIR}${BP_DIR}manifest.json"
   local _rp_path="${INPUT_DIR}${RP_DIR}manifest.json"
 
@@ -441,7 +481,7 @@ bump_versions() {
   _rp_uuid="$(echo "$_rp_content" | jq -r '.header.uuid')"
 
   # Get current shared version and bump it
-  loading_animation_loop -m "Bumping shared version for BP and RP"
+  loading_animation_loop -m 'Bumping shared version for BP and RP'
   local _current_shared_version
   _current_shared_version=$(jq -r '.version' "${INPUT_DIR}version.json" 2>/dev/null || echo '[1, 0, 0]')
   local _new_shared_version
@@ -449,88 +489,88 @@ bump_versions() {
 
   # Update shared version file
   set_shared_version "$_new_shared_version"
-  loading_animation_loop -m "Bumped version to %s" "$(array_to_string "$_new_shared_version")"
+  loading_animation_loop -m 'Bumped version to %s' "$(array_to_string "$_new_shared_version")"
 
   # Update BP manifest
-  loading_animation_loop -m "Saving BP version"
+  loading_animation_loop -m 'Saving BP version'
   _bp_content=$(echo "$_bp_content" | jq --argjson ver "$_new_shared_version" '.header.version = $ver')
   _bp_content=$(echo "$_bp_content" | jq --argjson ver "$_new_shared_version" '(.dependencies[]? | select(.uuid == "'"$_rp_uuid"'") | .version) = $ver')
   echo "$_bp_content" >"$_bp_path"
-  loading_animation_loop -m "Saved BP version"
+  loading_animation_loop -m 'Saved BP version'
 
   # Update RP manifest
-  loading_animation_loop -m "Saving RP version"
+  loading_animation_loop -m 'Saving RP version'
   _rp_content=$(echo "$_rp_content" | jq --argjson ver "$_new_shared_version" '.header.version = $ver')
   _rp_content=$(echo "$_rp_content" | jq --argjson ver "$_new_shared_version" '(.dependencies[]? | select(.uuid == "'"$_bp_uuid"'") | .version) = $ver')
   echo "$_rp_content" >"$_rp_path"
-  loading_animation_loop -m "Saved RP version"
+  loading_animation_loop -m 'Saved RP version'
 }
 
 ##----Build------------------------------------------------------------------------------------------------------------
 
 build_mcaddon() {
-  loading_animation_loop -m "Preparing MCADDON configuration"
-  MC_ADDON_FILE_PATH="$(get_filename "mcaddon")"
-  find "${GET_OUTPUT_DIR_NAME}" -name "$(get_wildcard_filename "mcaddon")" -type f -exec rm {} \;
-  loading_animation_loop -m "Prepared MCADDON configuration" -s "$GET_OUTPUT_DIR_NAME"
+  loading_animation_loop -m 'Preparing MCADDON configuration'
+  MC_ADDON_FILE_PATH="$(get_filename 'mcaddon')"
+  find "${GET_OUTPUT_DIR_NAME}" -name "$(get_wildcard_filename 'mcaddon')" -type f -exec rm {} \;
+  loading_animation_loop -m 'Prepared MCADDON configuration' -s "$GET_OUTPUT_DIR_NAME"
 
-  loading_animation_loop -m "Creating MCADDON"
+  loading_animation_loop -m 'Creating MCADDON'
   if (cd "$INPUT_DIR" && zip -qr "${GET_OUTPUT_DIR_NAME}${MC_ADDON_FILE_PATH}" "$BP_DIR" "$RP_DIR"); then
-    loading_animation_loop -m "Created MCADDON" -s "${GET_OUTPUT_DIR_NAME}${MC_ADDON_FILE_PATH}"
+    loading_animation_loop -m 'Created MCADDON' -s "${GET_OUTPUT_DIR_NAME}${MC_ADDON_FILE_PATH}"
   else
-    loading_animation_loop -m "Failed to create MCADDON" -c "$?"
+    loading_animation_loop -m 'Failed to create MCADDON' -c "$?"
   fi
 }
 
 build_mcpack() {
-  loading_animation_loop -m "Preparing MCPACK configuration"
-  MC_PACK_BP_FILE_PATH="$(get_filename "mcpack" "BP")"
-  MC_PACK_RP_FILE_PATH="$(get_filename "mcpack" "RP")"
-  find "${GET_OUTPUT_DIR_NAME}" -name "$(get_wildcard_filename "mcpack" "BP")" -type f -exec rm {} \;
-  find "${GET_OUTPUT_DIR_NAME}" -name "$(get_wildcard_filename "mcpack" "RP")" -type f -exec rm {} \;
-  loading_animation_loop -m "Prepared MCPACK configuration" -s "$GET_OUTPUT_DIR_NAME"
+  loading_animation_loop -m 'Preparing MCPACK configuration'
+  MC_PACK_BP_FILE_PATH="$(get_filename 'mcpack' 'BP')"
+  MC_PACK_RP_FILE_PATH="$(get_filename 'mcpack' 'RP')"
+  find "${GET_OUTPUT_DIR_NAME}" -name "$(get_wildcard_filename 'mcpack' 'BP')" -type f -exec rm {} \;
+  find "${GET_OUTPUT_DIR_NAME}" -name "$(get_wildcard_filename 'mcpack' 'RP')" -type f -exec rm {} \;
+  loading_animation_loop -m 'Prepared MCPACK configuration' -s "$GET_OUTPUT_DIR_NAME"
 
-  loading_animation_loop -m "Creating behavior MCPACK"
+  loading_animation_loop -m 'Creating behavior MCPACK'
   if (cd "$INPUT_DIR$BP_DIR" && zip -qr "${GET_OUTPUT_DIR_NAME}${MC_PACK_BP_FILE_PATH}" .); then
-    loading_animation_loop -m "Created behavior MCPACK" -s "$MC_PACK_BP_FILE_PATH"
+    loading_animation_loop -m 'Created behavior MCPACK' -s "$MC_PACK_BP_FILE_PATH"
   else
-    loading_animation_loop -m "Failed to create behavior MCPACK" -c "$?"
+    loading_animation_loop -m 'Failed to create behavior MCPACK' -c "$?"
   fi
 
-  loading_animation_loop -m "Creating resource MCPACK"
+  loading_animation_loop -m 'Creating resource MCPACK'
   if (cd "$INPUT_DIR$RP_DIR" && zip -qr "${GET_OUTPUT_DIR_NAME}${MC_PACK_RP_FILE_PATH}" .); then
-    loading_animation_loop -m "Created resource MCPACK" -s "$MC_PACK_RP_FILE_PATH"
+    loading_animation_loop -m 'Created resource MCPACK' -s "$MC_PACK_RP_FILE_PATH"
   else
-    loading_animation_loop -m "Failed to create resource MCPACK" -c "$?"
+    loading_animation_loop -m 'Failed to create resource MCPACK' -c "$?"
   fi
 }
 
 install_locally() {
   if [[ ! -d "$MOJANG_DIR" ]]; then
-    die 32 "Local mojang path does not exist: <u>%s</u>." "$MOJANG_DIR"
+    die 32 'Local mojang path does not exist: <u>%s</u>.' "$MOJANG_DIR"
   fi
 
-  loading_animation_loop -m "Preparing installation"
-  find "${MOJANG_DIR}behavior_packs/" -name "$(get_wildcard_filename "mcpack" "BP")" -type f -exec rm {} \;
-  find "${MOJANG_DIR}resource_packs/" -name "$(get_wildcard_filename "mcpack" "RP")" -type f -exec rm {} \;
-  loading_animation_loop -m "Prepared installation" -s "$MOJANG_DIR"
+  loading_animation_loop -m 'Preparing installation'
+  find "${MOJANG_DIR}behavior_packs/" -name "$(get_wildcard_filename 'mcpack' 'BP')" -type f -exec rm {} \;
+  find "${MOJANG_DIR}resource_packs/" -name "$(get_wildcard_filename 'mcpack' 'RP')" -type f -exec rm {} \;
+  loading_animation_loop -m '"Prepared installation' -s "$MOJANG_DIR"
 
-  loading_animation_loop -m "Installing BP on local"
+  loading_animation_loop -m 'Installing BP on local'
   mkdir -p "${MOJANG_DIR}behavior_packs/"
   cp -r "${GET_OUTPUT_DIR_NAME}${MC_PACK_BP_FILE_PATH}" "${MOJANG_DIR}behavior_packs/"
-  loading_animation_loop -m "Installed BP on local" -s "behavior_packs/${MC_PACK_BP_FILE_PATH}"
+  loading_animation_loop -m 'Installed BP on local' -s "behavior_packs/${MC_PACK_BP_FILE_PATH}"
 
-  loading_animation_loop - "Installing RP on local"
+  loading_animation_loop -m 'Installing RP on local'
   mkdir -p "${MOJANG_DIR}resource_packs/"
   cp -r "${GET_OUTPUT_DIR_NAME}${MC_PACK_RP_FILE_PATH}" "${MOJANG_DIR}resource_packs/"
-  loading_animation_loop -m "Installed RP on local" -s "resource_packs/${MC_PACK_RP_FILE_PATH}"
+  loading_animation_loop -m 'Installed RP on local' -s "resource_packs/${MC_PACK_RP_FILE_PATH}"
 }
 
 ##----Parser------------------------------------------------------------------------------------------------------------
 
 parse_arguments() {
   while [[ $# -gt 0 ]]; do
-    case "$1" in
+    case $1 in
     -i | --input)
       shift
       INPUT_DIR="$1"
@@ -554,7 +594,7 @@ parse_arguments() {
     -t | --no-time) APPEND_TIME_TO_BUILD_FILE=0 ;;
     -h | --help) show_usage ;;
     *)
-      log_error "Unknown option: <b>$1</b>"
+      log_error 'Unknown option: <b>%s</b>' "$1"
       show_usage
       ;;
     esac
@@ -571,29 +611,6 @@ parse_arguments() {
   fi
   if [[ "${MOJANG_DIR}" != */ ]]; then
     MOJANG_DIR="${MOJANG_DIR}/"
-  fi
-}
-
-##----Checking------------------------------------------------------------------------------------------------------------
-
-# Check if command exists
-command_exists() {
-  command -v "$1" >/dev/null 2>&1
-}
-
-check_dependencies() {
-  local deps=("$@")
-  local missing_deps=()
-
-  for dep in "${deps[@]}"; do
-    if ! command_exists "$dep"; then
-      missing_deps+=("$dep")
-    fi
-  done
-
-  if [[ ${#missing_deps[@]} -gt 0 ]]; then
-    missing_items="$(printf "<b>%s</b>, " "${missing_deps[@]}")"
-    die 13 "Missing dependencies: %s. Please install them and try again." "${missing_items::-2}"
   fi
 }
 
@@ -622,41 +639,41 @@ log_title "Minecraft Builder"
 parse_arguments "$@"
 
 if [[ $MCADDON -ne 1 && $MCPACK -ne 1 && $INSTALL_ON_LOCAL -ne 1 ]]; then
-  log_error "No build options selected."
+  log_error 'No build options selected.'
   show_usage
 fi
 if [[ -z "$INPUT_DIR" ]]; then
-  die 11 "Source directory is not defined."
+  die 11 'Source directory is not defined.'
 fi
 if [[ ! -d "$INPUT_DIR" ]]; then
-  die 12 "Source directory <u>%s</u> does not exist." "$INPUT_DIR"
+  die 12 'Source directory <u>%s</u> does not exist.' "$INPUT_DIR"
 fi
 if [[ ! -d "$OUTPUT_DIR" ]]; then
   if [[ "$OUTPUT_DIR_FORCE" -eq 1 ]]; then
     mkdir "$OUTPUT_DIR"
-    log_info "Created output directory" "$OUTPUT_DIR"
+    log_info 'Created output directory' "$OUTPUT_DIR"
   else
-    die 13 "Output directory does not exist: <u>%s</u>. Add <b>--force</b> argument to create missing directory or give another." "$OUTPUT_DIR"
+    die 13 'Output directory does not exist: <u>%s</u>. Add <b>--force</b> argument to create missing directory or give another.' "$OUTPUT_DIR"
   fi
 fi
 if [[ $INSTALL_ON_LOCAL -eq 1 ]] && [[ ! -d "$MOJANG_DIR" ]]; then
-  die 14 "Mojang directory does not exist: <u>%s</u>." "$MOJANG_DIR"
+  die 14 'Mojang directory does not exist: <u>%s</u>' "$MOJANG_DIR"
 
 fi
 
 GET_OUTPUT_DIR_NAME="$(get_output_dir_name)"
 if [[ ! -f "${INPUT_DIR}version.json" ]]; then
-  die 21 "Source directory does not contain <u>version.json</u> file: <u>%s</u>" "$INPUT_DIR"
+  die 21 'Source directory does not contain <u>version.json</u> file: <u>%s</u>' "$INPUT_DIR"
 fi
 if [[ ! -f "${INPUT_DIR}${BP_DIR}manifest.json" ]]; then
-  die 22 "Source directory does not contain <u>manifest.json</u> file: <u>%s</u>" "${INPUT_DIR}${BP_DIR}"
+  die 22 'Source directory does not contain <u>manifest.json</u> file: <u>%s</u>' "${INPUT_DIR}${BP_DIR}"
 fi
 if [[ ! -f "${INPUT_DIR}${RP_DIR}manifest.json" ]]; then
-  die 23 "Source directory does not contain <u>manifest.json</u> file: <u>%s</u>." "${INPUT_DIR}${RP_DIR}"
+  die 23 'Source directory does not contain <u>manifest.json</u> file: <u>%s</u>' "${INPUT_DIR}${RP_DIR}"
 fi
 
 PACKNAME="$(normalize_name "$(cd "$INPUT_DIR" && basename "$(pwd)")")"
-log_header "Building Minecraft packs for <b>%s</b> project" "$PACKNAME"
+log_header 'Building Minecraft packs for <b>%s</b> project' "$PACKNAME"
 
 if [[ $VERSION_BUMP -eq 1 ]]; then
   bump_versions
