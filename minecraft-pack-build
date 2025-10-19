@@ -8,46 +8,6 @@ set -euo pipefail
 # Set terminal type for proper color support
 export TERM=xterm-256color
 
-##----USAGE------------------------------------------------------------------------------------------------------------
-
-show_usage() {
-  log_usage_title '[OPTIONS]'
-  echo
-  log_header 'Options'
-  log_usage_options_line '-i;--input DIR' \
-    'input directory location'
-  log_usage_options_line '-o;--output DIR' \
-    'output directory location (only for creating mcpack or mcaddon files)'
-  log_usage_options_line '-f;--force' \
-    'force creation of output directory'
-  log_usage_options_line '-m;--mojang DIR' \
-    'Mojang directory location, default: <u>%s</u>' "$MOJANG_DIR"
-  echo
-  log_header 'Build options'
-  log_usage_options_line '-a;--mcaddon' \
-    'create mcaddon file'
-  log_usage_options_line '-p;--mcpack' \
-    'create mcpack files'
-  log_usage_options_line '-l;--local-installation' \
-    'install addon to local Minecraft folder'
-  echo
-  log_header 'Build modes'
-  log_usage_options_line '-b;--no-bump' \
-    'do not bump package version'
-  log_usage_options_line '-v;--no-version' \
-    'do not add version to built file names'
-  log_usage_options_line '-t;--no-time' \
-    'do not add datetime to built file names'
-  log_usage_options_line '-h;--help' \
-    'show this help message'
-  echo
-  log_header 'Examples'
-  log_usage_example_line '--input ./my-pack --mcaddon'
-  log_usage_example_line '-i ./my-pack -o ./builds --mcpack --no-bump'
-  log_usage_example_line '-i ./my-pack --local-installation'
-  echo
-  exit 0
-}
 ##----Check bash version------------------------------------------------------------------------------------------------------------
 
 if [[ "$BASH_VERSION" == 0* ]] || [[ "$BASH_VERSION" == 1* ]] || [[ "$BASH_VERSION" == 2* ]] || [[ "$BASH_VERSION" == 3* ]]; then
@@ -173,14 +133,7 @@ log_message() {
     _text="$(_text_format "$_color_value" ' <b>%s</b> %s' "$_icon" "$_text")"
   fi
   if [[ -n "$_status" ]]; then
-    local _raw_bytes
-    _raw_bytes="$(echo -n "${_text//$'\e'[\[(]*([0-9;])[@-n]/}" | wc -c | tr -d ' ')"
-    local _text_bytes
-    _text_bytes="$(echo -n "$_text" | wc -c | tr -d ' ')"
-    local _text_chars
-    _text_chars="$(echo -n "$_text" | wc -m | tr -d ' ')"
-    local _padding=$((64 + (_text_bytes - _text_chars) + (_text_bytes - _raw_bytes)))
-    _text="$(_text_format "$_color_value" '%-*s [<b>%s</b>]' "$_padding" "$_text" "$_status")"
+    _text="$(_text_format "$_color_value" '%-*s [<b>%s</b>]' "$(calculate_real_padding 64 "$_text")" "$_text" "$_status")"
   fi
   echo -e -n "${_line_prepend}${_color_value}${_text}${_line_append}$(styler reset)"
 }
@@ -253,7 +206,7 @@ log_title() {
   local _padding=$(((_total_width - _title_length) / 2))
 
   log_message --color 'WHITE' '<b>╔%s╗</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
-  log_message --color 'WHITE' "<b>║%*s$(styler text "YELLOW")%s%*s$(styler text "WHITE")║</b>" "$_padding" " " "$_title_text" "$_padding" " "
+  log_message --color 'WHITE' "<b>║%*s$(styler text 'YELLOW')%s%*s$(styler text 'WHITE')║</b>" "$_padding" " " "$_title_text" "$_padding" " "
   log_message --color 'WHITE' '<b>╚%s╝</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
 }
 
@@ -266,16 +219,44 @@ log_usage_title() {
 }
 
 log_usage_options_line() {
+  local _space=30
+  local POSITIONAL_ARGS=()
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+    -s | --space)
+      shift
+      _space="$1"
+      ;;
+    *) POSITIONAL_ARGS+=("$1") ;;
+    esac
+    shift
+  done
+  set -- "${POSITIONAL_ARGS[@]}"
   local _parameters
   IFS=';' read -r -a _parameters <<<"$1"
   shift
-  local _parameters_list
-  _parameters_list="$(printf '<b>%s</b>, ' "${_parameters[@]}")"
+
+  local _padding
+  _padding=$(calculate_real_padding "$_space" "${_parameters[*]}")
+  _padding=$((_padding + 7 * ${#_parameters[@]}))
   local _options
-  _options="$(printf '  %-*s' "$((30 + 7 * ${#_parameters[@]}))" "${_parameters_list::-2}")"
+  _options="$(printf '  %-*s' "$_padding" "$(array_to_string '<b>%s</b>, ' "${_parameters[@]}")")"
   local _message="$1"
   shift
   log_message "${_options} ${_message}" "$@"
+}
+
+calculate_real_padding() {
+  local _space="$1"
+  local _text="$2"
+  local _raw_bytes
+  _raw_bytes="$(echo -n "${_text//$'\e'[\[(]*([0-9;])[@-n]/}" | wc -c | tr -d ' ')"
+  local _text_bytes
+  _text_bytes="$(echo -n "$_text" | wc -c | tr -d ' ')"
+  local _text_chars
+  _text_chars="$(echo -n "$_text" | wc -m | tr -d ' ')"
+  local _padding=$((_space + (_text_bytes - _text_chars) + (_text_bytes - _raw_bytes)))
+  echo "$_padding"
 }
 
 log_usage_example_line() {
@@ -367,6 +348,16 @@ wait_moment() {
 trap "loading_animation_loop -x;exit" SIGINT
 trap "loading_animation_loop -x;exit" EXIT
 
+##----Convert------------------------------------------------------------------------------------------------------------
+
+array_to_string() {
+  local _pattern="$1"
+  shift
+  local _parameters_list
+  _parameters_list="$(printf "$_pattern" "$@")"
+  echo -n "${_parameters_list::-2}"
+}
+
 ##----Checking------------------------------------------------------------------------------------------------------------
 
 # Check if command exists
@@ -389,6 +380,47 @@ check_dependencies() {
     _missing_items="$(printf '<b>%s</b>, ' "${_missing_deps[@]}")"
     die 13 'Missing dependencies: %s. Please install them and try again.' "${_missing_items::-2}"
   fi
+}
+
+##----USAGE------------------------------------------------------------------------------------------------------------
+
+show_usage() {
+  log_usage_title '[OPTIONS]'
+  echo
+  log_header 'Options'
+  log_usage_options_line '-i;--input DIR' \
+    'input directory location'
+  log_usage_options_line '-o;--output DIR' \
+    'output directory location (only for creating mcpack or mcaddon files)'
+  log_usage_options_line '-f;--force' \
+    'force creation of output directory'
+  log_usage_options_line '-m;--mojang DIR' \
+    'Mojang directory location, default: <u>%s</u>' "$MOJANG_DIR"
+  echo
+  log_header 'Build options'
+  log_usage_options_line '-a;--mcaddon' \
+    'create mcaddon file'
+  log_usage_options_line '-p;--mcpack' \
+    'create mcpack files'
+  log_usage_options_line '-l;--local-installation' \
+    'install addon to local Minecraft folder'
+  echo
+  log_header 'Build modes'
+  log_usage_options_line '-b;--no-bump' \
+    'do not bump package version'
+  log_usage_options_line '-v;--no-version' \
+    'do not add version to built file names'
+  log_usage_options_line '-t;--no-time' \
+    'do not add datetime to built file names'
+  log_usage_options_line '-h;--help' \
+    'show this help message'
+  echo
+  log_header 'Examples'
+  log_usage_example_line '--input ./my-pack --mcaddon'
+  log_usage_example_line '-i ./my-pack -o ./builds --mcpack --no-bump'
+  log_usage_example_line '-i ./my-pack --local-installation'
+  echo
+  exit 0
 }
 
 ##----Helpers------------------------------------------------------------------------------------------------------------
@@ -593,8 +625,14 @@ parse_arguments() {
     -v | --no-version) APPEND_VERSION_TO_BUILD_FILE=0 ;;
     -t | --no-time) APPEND_TIME_TO_BUILD_FILE=0 ;;
     -h | --help) show_usage ;;
-    *)
+    -*)
       log_error 'Unknown option: <b>%s</b>' "$1"
+      echo
+      show_usage
+      ;;
+    *)
+      log_error 'Unexpected argument: <b>%s</b>' "$1"
+      echo
       show_usage
       ;;
     esac
