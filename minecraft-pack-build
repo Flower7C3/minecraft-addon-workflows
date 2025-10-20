@@ -585,7 +585,7 @@ install_locally() {
   loading_animation_loop -m 'Preparing installation'
   find "${MOJANG_DIR}behavior_packs/" -name "$(get_wildcard_filename 'mcpack' 'BP')" -type f -exec rm {} \;
   find "${MOJANG_DIR}resource_packs/" -name "$(get_wildcard_filename 'mcpack' 'RP')" -type f -exec rm {} \;
-  loading_animation_loop -m '"Prepared installation' -s "$MOJANG_DIR"
+  loading_animation_loop -m 'Prepared installation' -s "$MOJANG_DIR"
 
   loading_animation_loop -m 'Installing BP on local'
   mkdir -p "${MOJANG_DIR}behavior_packs/"
