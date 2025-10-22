@@ -95,33 +95,33 @@ log_message() {
   local _status=""
   local POSITIONAL_ARGS=()
   while [[ $# -gt 0 ]]; do
-    case $1 in
-    -c | --color)
+    case "$1" in
+    ---color)
       shift
       _color_value="$(styler text "$1")"
       ;;
-    -i | --icon)
+    ---icon)
       shift
       _icon="$1"
       ;;
-    -w | --width)
+    ---width)
       shift
       _width="$1"
       ;;
-    -p | --prepend)
+    ---prepend)
       shift
       _line_prepend="$_line_prepend$1"
       ;;
-    -b | --bell)
+    ---bell)
       _line_prepend="$_line_prepend\a"
       ;;
-    -r | --reset)
+    ---reset)
       _line_prepend="\r$_line_prepend"
       ;;
-    -o | --one-line)
+    ---one-line)
       _line_append=""
       ;;
-    -s | --status)
+    ---status)
       shift
       _status="$1"
       ;;
@@ -148,12 +148,12 @@ prepare_log_message() {
   shift
   local POSITIONAL_ARGS=()
   while [[ $# -gt 0 ]]; do
-    case $1 in
-    -c | --color)
+    case "$1" in
+    ---color)
       shift
       _color="$1"
       ;;
-    -i | --icon)
+    ---icon)
       shift
       _icon="$1"
       ;;
@@ -162,7 +162,7 @@ prepare_log_message() {
     shift
   done
   set -- "${POSITIONAL_ARGS[@]}"
-  log_message --color "$_color" --icon "$_icon" "$@"
+  log_message ---color "$_color" ---icon "$_icon" "$@"
 }
 
 log_info() {
@@ -208,27 +208,27 @@ log_title() {
   fi
   local _padding=$(((_total_width - _title_length) / 2))
 
-  log_message --color 'WHITE' '<b>╔%s╗</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
-  log_message --color 'WHITE' "<b>║%*s$(styler text 'YELLOW')%s%*s$(styler text 'WHITE')║</b>" "$_padding" " " "$_title_text" "$_padding" " "
-  log_message --color 'WHITE' '<b>╚%s╝</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
+  log_message ---color 'WHITE' '<b>╔%s╗</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
+  log_message ---color 'WHITE' "<b>║%*s$(styler text 'YELLOW')%s%*s$(styler text 'WHITE')║</b>" "$_padding" " " "$_title_text" "$_padding" " "
+  log_message ---color 'WHITE' '<b>╚%s╝</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
 }
 
 log_header() {
   local _message="$1"
   shift
-  log_message --color 'PURPLE' "<b>$_message</b>" "$@"
+  log_message ---color 'PURPLE' "<b>$_message</b>" "$@"
 }
 
 log_usage_title() {
-  log_message --color 'PURPLE' '<b>Usage</b> <code>%s %s</code>' "$0" "$*"
+  log_message ---color 'PURPLE' '<b>Usage</b> <code>%s %s</code>' "$0" "$*"
 }
 
 log_usage_options_line() {
   local _width=30
   local POSITIONAL_ARGS=()
   while [[ $# -gt 0 ]]; do
-    case $1 in
-    -w | --width)
+    case "$1" in
+    ---width)
       shift
       _width="$1"
       ;;
@@ -265,7 +265,7 @@ calculate_real_padding() {
 }
 
 log_usage_example_line() {
-  log_message --color 'CYAN' --icon ' $' '<code>%s %s</code>' "$0" "$*"
+  log_message ---color 'CYAN' ---icon ' $' '<code>%s %s</code>' "$0" "$*"
 }
 
 # Die with error message
@@ -287,24 +287,24 @@ loading_animation_loop() {
   local _countdown=""
   local POSITIONAL_ARGS=()
   while [[ $# -gt 0 ]]; do
-    case $1 in
-    -m | --message)
+    case "$1" in
+    ---message)
       shift
       loading_animation_message="$1"
       ;;
-    -t | --time)
+    ---time)
       shift
       _countdown="$1"
       ;;
-    -c | --_exit_code)
+    ---exit-code)
       shift
       _exit_code="$1"
       ;;
-    -s | --status)
+    ---status)
       shift
       _status="$1"
       ;;
-    -x) _exit_trap=1 ;;
+    ---trap) _exit_trap=1 ;;
     *) POSITIONAL_ARGS+=("$1") ;;
     esac
     shift
@@ -315,11 +315,11 @@ loading_animation_loop() {
     printf "\r%100s\r$(styler reset)" ""
     if [[ "$loading_animation_message" != "" ]]; then
       if [[ "$_exit_code" -gt "0" ]]; then
-        log_error --status "$_status" "$loading_animation_message" "$@"
+        log_error ---status "$_status" "$loading_animation_message" "$@"
       elif [[ "$_exit_code" -lt "0" ]]; then
-        log_warning --status "$_status" "$loading_animation_message" "$@"
+        log_warning ---status "$_status" "$loading_animation_message" "$@"
       else
-        log_success --status "$_status" "$loading_animation_message" "$@"
+        log_success ---status "$_status" "$loading_animation_message" "$@"
       fi
       loading_animation_pid=""
       loading_animation_message=""
@@ -330,10 +330,10 @@ loading_animation_loop() {
       while true; do
         for _frame in "${LOADING_ANIMATION[@]}"; do
           if [[ -n "$loading_animation_message" ]]; then
-            log_message --color 'CYAN' --one-line --icon "$_frame" "$loading_animation_message"
+            log_message ---color 'CYAN' ---one-line ---icon "$_frame" "$loading_animation_message"
             sleep "$LOADING_ANIMATION_FRAME_INTERVAL"
           else
-            log_message --color 'CYAN' --one-line 'waiting %s' "$(echo "$_countdown - $_step" | bc -z)"
+            log_message ---color 'CYAN' ---one-line 'waiting %s' "$(echo "$_countdown - $_step" | bc -z)"
             sleep "1"
           fi
           _step="$((_step + 1))"
@@ -346,13 +346,13 @@ loading_animation_loop() {
 }
 
 wait_moment() {
-  loading_animation_loop --time "$RETRY_INTERVAL"
+  loading_animation_loop ---time "$RETRY_INTERVAL"
   sleep "$RETRY_INTERVAL"
-  loading_animation_loop --code 0
+  loading_animation_loop ---code 0
 }
 
-trap "loading_animation_loop -x;exit" SIGINT
-trap "loading_animation_loop -x;exit" EXIT
+trap "loading_animation_loop ---trap;exit" SIGINT
+trap "loading_animation_loop ---trap;exit" EXIT
 
 ##----IO------------------------------------------------------------------------------------------------------------
 
@@ -366,9 +366,9 @@ prompt_input() {
   shift
   local _message
   if [[ "$#" -gt "0" ]]; then
-    _message="$(log_message --color "YELLOW" --icon "$ICON_PROMPT" --one-line "%s [%s]: " "$_prompt_text" "$(array_to_string '<b>%s</b>' ',' "$@")")"
+    _message="$(log_message ---color "YELLOW" ---icon "$ICON_PROMPT" ---one-line "%s [%s]: " "$_prompt_text" "$(array_to_string '<b>%s</b>' ',' "$@")")"
   else
-    _message="$(log_message --color "YELLOW" --icon "$ICON_PROMPT" --one-line "%s: " "$_prompt_text")"
+    _message="$(log_message ---color "YELLOW" ---icon "$ICON_PROMPT" ---one-line "%s: " "$_prompt_text")"
   fi
 
   # get
@@ -563,7 +563,7 @@ bump_versions() {
   _rp_uuid="$(echo "$_rp_content" | jq -r '.header.uuid')"
 
   # Get current shared version and bump it
-  loading_animation_loop -m 'Bumping shared version for BP and RP'
+  loading_animation_loop ---message 'Bumping shared version for BP and RP'
   local _current_shared_version
   _current_shared_version=$(jq -r '.version' "${INPUT_DIR}version.json" 2>/dev/null || echo '[1, 0, 0]')
   local _new_shared_version
@@ -571,59 +571,59 @@ bump_versions() {
 
   # Update shared version file
   set_shared_version "$_new_shared_version"
-  loading_animation_loop -m 'Bumped version to %s' "$(json_array_to_string "$_new_shared_version")"
+  loading_animation_loop ---message 'Bumped version to %s' "$(json_array_to_string "$_new_shared_version")"
 
   # Update BP manifest
-  loading_animation_loop -m 'Saving BP version'
+  loading_animation_loop ---message 'Saving BP version'
   _bp_content=$(echo "$_bp_content" | jq --argjson ver "$_new_shared_version" '.header.version = $ver')
   _bp_content=$(echo "$_bp_content" | jq --argjson ver "$_new_shared_version" '(.dependencies[]? | select(.uuid == "'"$_rp_uuid"'") | .version) = $ver')
   echo "$_bp_content" >"$_bp_path"
-  loading_animation_loop -m 'Saved BP version'
+  loading_animation_loop ---message 'Saved BP version'
 
   # Update RP manifest
-  loading_animation_loop -m 'Saving RP version'
+  loading_animation_loop ---message 'Saving RP version'
   _rp_content=$(echo "$_rp_content" | jq --argjson ver "$_new_shared_version" '.header.version = $ver')
   _rp_content=$(echo "$_rp_content" | jq --argjson ver "$_new_shared_version" '(.dependencies[]? | select(.uuid == "'"$_bp_uuid"'") | .version) = $ver')
   echo "$_rp_content" >"$_rp_path"
-  loading_animation_loop -m 'Saved RP version'
+  loading_animation_loop ---message 'Saved RP version'
 }
 
 ##----Build------------------------------------------------------------------------------------------------------------
 
 build_mcaddon() {
-  loading_animation_loop -m 'Preparing MCADDON configuration'
+  loading_animation_loop ---message 'Preparing MCADDON configuration'
   MC_ADDON_FILE_PATH="$(get_filename 'mcaddon')"
   find "${GET_OUTPUT_DIR_NAME}" -name "$(get_wildcard_filename 'mcaddon')" -type f -exec rm {} \;
-  loading_animation_loop -m 'Prepared MCADDON configuration' -s "$GET_OUTPUT_DIR_NAME"
+  loading_animation_loop ---message 'Prepared MCADDON configuration' ---status "$GET_OUTPUT_DIR_NAME"
 
-  loading_animation_loop -m 'Creating MCADDON'
+  loading_animation_loop ---message 'Creating MCADDON'
   if (cd "$INPUT_DIR" && zip -qr "${GET_OUTPUT_DIR_NAME}${MC_ADDON_FILE_PATH}" "$BP_DIR" "$RP_DIR"); then
-    loading_animation_loop -m 'Created MCADDON' -s "${GET_OUTPUT_DIR_NAME}${MC_ADDON_FILE_PATH}"
+    loading_animation_loop ---message 'Created MCADDON' ---status "${GET_OUTPUT_DIR_NAME}${MC_ADDON_FILE_PATH}"
   else
-    loading_animation_loop -m 'Failed to create MCADDON' -c "$?"
+    loading_animation_loop ---message 'Failed to create MCADDON' ---exit-code "$?"
   fi
 }
 
 build_mcpack() {
-  loading_animation_loop -m 'Preparing MCPACK configuration'
+  loading_animation_loop ---message 'Preparing MCPACK configuration'
   MC_PACK_BP_FILE_PATH="$(get_filename 'mcpack' 'BP')"
   MC_PACK_RP_FILE_PATH="$(get_filename 'mcpack' 'RP')"
   find "${GET_OUTPUT_DIR_NAME}" -name "$(get_wildcard_filename 'mcpack' 'BP')" -type f -exec rm {} \;
   find "${GET_OUTPUT_DIR_NAME}" -name "$(get_wildcard_filename 'mcpack' 'RP')" -type f -exec rm {} \;
-  loading_animation_loop -m 'Prepared MCPACK configuration' -s "$GET_OUTPUT_DIR_NAME"
+  loading_animation_loop ---message 'Prepared MCPACK configuration' ---status "$GET_OUTPUT_DIR_NAME"
 
-  loading_animation_loop -m 'Creating behavior MCPACK'
+  loading_animation_loop ---message 'Creating behavior MCPACK'
   if (cd "$INPUT_DIR$BP_DIR" && zip -qr "${GET_OUTPUT_DIR_NAME}${MC_PACK_BP_FILE_PATH}" .); then
-    loading_animation_loop -m 'Created behavior MCPACK' -s "$MC_PACK_BP_FILE_PATH"
+    loading_animation_loop ---message 'Created behavior MCPACK' ---status "$MC_PACK_BP_FILE_PATH"
   else
-    loading_animation_loop -m 'Failed to create behavior MCPACK' -c "$?"
+    loading_animation_loop ---message 'Failed to create behavior MCPACK' ---exit-code "$?"
   fi
 
-  loading_animation_loop -m 'Creating resource MCPACK'
+  loading_animation_loop ---message 'Creating resource MCPACK'
   if (cd "$INPUT_DIR$RP_DIR" && zip -qr "${GET_OUTPUT_DIR_NAME}${MC_PACK_RP_FILE_PATH}" .); then
-    loading_animation_loop -m 'Created resource MCPACK' -s "$MC_PACK_RP_FILE_PATH"
+    loading_animation_loop ---message 'Created resource MCPACK' ---status "$MC_PACK_RP_FILE_PATH"
   else
-    loading_animation_loop -m 'Failed to create resource MCPACK' -c "$?"
+    loading_animation_loop ---message 'Failed to create resource MCPACK' ---exit-code "$?"
   fi
 }
 
@@ -631,23 +631,24 @@ install_locally() {
   if [[ ! -d "$MOJANG_DIR" ]]; then
     die 32 'Local mojang path does not exist: <u>%s</u>.' "$MOJANG_DIR"
   fi
-
-  loading_animation_loop -m 'Preparing installation'
-  rm -rf "${MOJANG_DIR}development_behavior_packs/" 2>/dev/null
-  rm -rf "${MOJANG_DIR}development_resource_packs/" 2>/dev/null
+  loading_animation_loop ---message 'Preparing installation'
+  rm -rf "${MOJANG_DIR}development_behavior_packs/"
+  rm -rf "${MOJANG_DIR}development_resource_packs/"
+  rm -rf "${MOJANG_DIR}minecraftWorlds/*/behavior_packs/"
+  rm -rf "${MOJANG_DIR}minecraftWorlds/*/resource_packs/"
   find "${MOJANG_DIR}behavior_packs/" -name "$(get_wildcard_filename 'mcpack' 'BP')" -type f -exec rm {} \;
   find "${MOJANG_DIR}resource_packs/" -name "$(get_wildcard_filename 'mcpack' 'RP')" -type f -exec rm {} \;
-  loading_animation_loop -m 'Prepared installation' -s "$MOJANG_DIR"
+  loading_animation_loop ---message 'Prepared installation' ---status "$MOJANG_DIR"
 
-  loading_animation_loop -m 'Installing BP on local'
+  loading_animation_loop ---message 'Installing BP on local'
   mkdir -p "${MOJANG_DIR}behavior_packs/"
   cp -r "${GET_OUTPUT_DIR_NAME}${MC_PACK_BP_FILE_PATH}" "${MOJANG_DIR}behavior_packs/"
-  loading_animation_loop -m 'Installed BP on local' -s "behavior_packs/${MC_PACK_BP_FILE_PATH}"
+  loading_animation_loop ---message 'Installed BP on local' ---status "behavior_packs/${MC_PACK_BP_FILE_PATH}"
 
-  loading_animation_loop -m 'Installing RP on local'
+  loading_animation_loop ---message 'Installing RP on local'
   mkdir -p "${MOJANG_DIR}resource_packs/"
   cp -r "${GET_OUTPUT_DIR_NAME}${MC_PACK_RP_FILE_PATH}" "${MOJANG_DIR}resource_packs/"
-  loading_animation_loop -m 'Installed RP on local' -s "resource_packs/${MC_PACK_RP_FILE_PATH}"
+  loading_animation_loop ---message 'Installed RP on local' ---status "resource_packs/${MC_PACK_RP_FILE_PATH}"
 }
 
 ##----Parser------------------------------------------------------------------------------------------------------------
