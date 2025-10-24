@@ -66,6 +66,7 @@ readonly ICON_PROMPT='✏︎'
 
 readonly LOADING_ANIMATION=("⠇" "⠋" "⠙" "⠸" "⠴" "⠦")
 readonly LOADING_ANIMATION_FRAME_INTERVAL=0.15
+readonly LOADING_ANIMATION_RETRY_INTERVAL=5
 
 ##----Display line------------------------------------------------------------------------------------------------------------
 
@@ -311,7 +312,8 @@ loading_animation_loop() {
   done
   set -- "${POSITIONAL_ARGS[@]}"
   if [[ -n "$loading_animation_pid" ]]; then
-    kill "$loading_animation_pid" &>/dev/null
+    kill "$loading_animation_pid" 2>/dev/null || true
+    wait "$loading_animation_pid" 2>/dev/null || true
     printf "\r%100s\r$(styler reset)" ""
     if [[ "$loading_animation_message" != "" ]]; then
       if [[ "$_exit_code" -gt "0" ]]; then
@@ -330,14 +332,14 @@ loading_animation_loop() {
       while true; do
         for _frame in "${LOADING_ANIMATION[@]}"; do
           if [[ -n "$loading_animation_message" ]]; then
-            log_message ---color 'CYAN' ---one-line ---icon "$_frame" "$loading_animation_message"
+            log_message ---color 'CYAN' ---one-line ---icon "$_frame" "$loading_animation_message" 2>/dev/null || break
             sleep "$LOADING_ANIMATION_FRAME_INTERVAL"
           else
-            log_message ---color 'CYAN' ---one-line 'waiting %s' "$(echo "$_countdown - $_step" | bc -z)"
+            log_message ---color 'CYAN' ---one-line 'waiting %s' "$(echo "$_countdown - $_step" 2>/dev/null | bc -z 2>/dev/null || echo "$_countdown")" 2>/dev/null || break
             sleep "1"
           fi
           _step="$((_step + 1))"
-          printf "\r"
+          printf "\r" 2>/dev/null || break
         done
       done
     ) &
@@ -346,9 +348,9 @@ loading_animation_loop() {
 }
 
 wait_moment() {
-  loading_animation_loop ---time "$RETRY_INTERVAL"
-  sleep "$RETRY_INTERVAL"
-  loading_animation_loop ---code 0
+  loading_animation_loop ---time "$LOADING_ANIMATION_RETRY_INTERVAL"
+  sleep "$LOADING_ANIMATION_RETRY_INTERVAL"
+  loading_animation_loop ---exit-code 0
 }
 
 trap "loading_animation_loop ---trap;exit" SIGINT
