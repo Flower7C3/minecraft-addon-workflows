@@ -634,8 +634,8 @@ install_locally() {
     die 32 'Local mojang path does not exist: <u>%s</u>.' "$MOJANG_DIR"
   fi
   loading_animation_loop ---message 'Preparing installation'
-  rm -rf "${MOJANG_DIR}development_behavior_packs/"
-  rm -rf "${MOJANG_DIR}development_resource_packs/"
+  rm -rf "${MOJANG_DIR}development_behavior_packs/${PACKNAME}/"
+  rm -rf "${MOJANG_DIR}development_resource_packs/${PACKNAME}/"
   rm -rf "${MOJANG_DIR}minecraftWorlds/*/behavior_packs/"
   rm -rf "${MOJANG_DIR}minecraftWorlds/*/resource_packs/"
   find "${MOJANG_DIR}behavior_packs/" -name "$(get_wildcard_filename 'mcpack' 'BP')" -type f -exec rm {} \;
@@ -651,6 +651,28 @@ install_locally() {
   mkdir -p "${MOJANG_DIR}resource_packs/"
   cp -r "${GET_OUTPUT_DIR_NAME}${MC_PACK_RP_FILE_PATH}" "${MOJANG_DIR}resource_packs/"
   loading_animation_loop ---message 'Installed RP on local' ---status "resource_packs/${MC_PACK_RP_FILE_PATH}"
+}
+
+debug_locally() {
+  if [[ ! -d "$MOJANG_DIR" ]]; then
+    die 32 'Local mojang path does not exist: <u>%s</u>.' "$MOJANG_DIR"
+  fi
+  loading_animation_loop ---message 'Preparing installation'
+  rm -rf "${MOJANG_DIR}development_behavior_packs/${PACKNAME}/"
+  rm -rf "${MOJANG_DIR}development_resource_packs/${PACKNAME}/"
+  rm -rf "${MOJANG_DIR}minecraftWorlds/*/behavior_packs/"
+  rm -rf "${MOJANG_DIR}minecraftWorlds/*/resource_packs/"
+  find "${MOJANG_DIR}behavior_packs/" -name "$(get_wildcard_filename 'mcpack' 'BP')" -type f -exec rm {} \;
+  find "${MOJANG_DIR}resource_packs/" -name "$(get_wildcard_filename 'mcpack' 'RP')" -type f -exec rm {} \;
+  loading_animation_loop ---message 'Prepared installation' ---status "$MOJANG_DIR"
+
+  loading_animation_loop ---message 'Installing BP on local'
+  cp -r "BP/" "${MOJANG_DIR}development_behavior_packs/${PACKNAME}/"
+  loading_animation_loop ---message 'Installed BP on local' ---status "development_behavior_packs/${PACKNAME}/"
+
+  loading_animation_loop ---message 'Installing RP on local'
+  cp -r "RP/" "${MOJANG_DIR}development_resource_packs/${PACKNAME}/"
+  loading_animation_loop ---message 'Installed RP on local' ---status "development_resource_packs/${PACKNAME}/"
 }
 
 ##----Parser------------------------------------------------------------------------------------------------------------
@@ -676,6 +698,7 @@ parse_arguments() {
     -a | --mcaddon) MCADDON=1 ;;
     -p | --mcpack) MCPACK=1 ;;
     -l | --local-installation) INSTALL_ON_LOCAL=1 ;;
+    -d | --debug-installation) DEBUG_ON_LOCAL=1 ;;
     -b | --no-bump) VERSION_BUMP=0 ;;
     -v | --no-version) APPEND_VERSION_TO_BUILD_FILE=0 ;;
     -t | --no-time) APPEND_TIME_TO_BUILD_FILE=0 ;;
@@ -721,6 +744,7 @@ VERSION_BUMP=1
 APPEND_VERSION_TO_BUILD_FILE=1
 APPEND_TIME_TO_BUILD_FILE=1
 INSTALL_ON_LOCAL=0
+DEBUG_ON_LOCAL=0
 INPUT_DIR=""
 OUTPUT_DIR=""
 MOJANG_DIR="$HOME/Library/Application Support/mcpelauncher/games/com.mojang/"
@@ -731,7 +755,7 @@ log_title "Minecraft Builder"
 
 parse_arguments "$@"
 
-if [[ $MCADDON -ne 1 && $MCPACK -ne 1 && $INSTALL_ON_LOCAL -ne 1 ]]; then
+if [[ $MCADDON -ne 1 && $MCPACK -ne 1 && $INSTALL_ON_LOCAL -ne 1 && $DEBUG_ON_LOCAL -ne 1 ]]; then
   log_error 'No build options selected.'
   show_usage
 fi
@@ -749,9 +773,8 @@ if [[ ! -d "$OUTPUT_DIR" ]]; then
     die 13 'Output directory does not exist: <u>%s</u>. Add <b>--force</b> argument to create missing directory or give another.' "$OUTPUT_DIR"
   fi
 fi
-if [[ $INSTALL_ON_LOCAL -eq 1 ]] && [[ ! -d "$MOJANG_DIR" ]]; then
+if [[ $INSTALL_ON_LOCAL -eq 1 || $DEBUG_ON_LOCAL -eq 1 ]] && [[ ! -d "$MOJANG_DIR" ]]; then
   die 14 'Mojang directory does not exist: <u>%s</u>' "$MOJANG_DIR"
-
 fi
 
 GET_OUTPUT_DIR_NAME="$(get_output_dir_name)"
@@ -782,4 +805,7 @@ if [[ $INSTALL_ON_LOCAL -eq 1 ]]; then
     build_mcpack
   fi
   install_locally
+fi
+if [[ $DEBUG_ON_LOCAL -eq 1 ]]; then
+  debug_locally
 fi
