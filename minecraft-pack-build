@@ -221,7 +221,7 @@ log_header() {
 }
 
 log_usage_title() {
-  log_message ---color 'PURPLE' '<b>Usage</b> <code>%s %s</code>' "$0" "$*"
+  log_message ---color 'PURPLE' '<b>Usage</b> <code>%s %s</code>' "$(dirname "$0")/$(basename "$0")" "$*"
 }
 
 log_usage_options_line() {
@@ -366,6 +366,8 @@ prompt_input() {
   shift
   local _default_value="${1:-}"
   shift
+  local _prompt_length="${1:-}"
+  shift
   local _message
   if [[ "$#" -gt "0" ]]; then
     _message="$(log_message ---color "YELLOW" ---icon "$ICON_PROMPT" ---one-line "%s [%s]: " "$_prompt_text" "$(array_to_string '<b>%s</b>' ',' "$@")")"
@@ -375,7 +377,11 @@ prompt_input() {
 
   # get
   local _value
-  read -r -p "$_message" -e -i "$_default_value" _value
+  if [[ "$_prompt_length" -gt "0" ]]; then
+    read -r -n "$_prompt_length" -p "$_message" -e -i "$_default_value" _value
+  else
+    read -r -p "$_message" -e -i "$_default_value" _value
+  fi
   if [[ -z "$_value" ]]; then
     _value="$_default_value"
   fi
@@ -390,7 +396,7 @@ confirm_or_exit() {
   local _response="z"
 
   while [[ ! "$_response" =~ ^[YyNn]?$ ]]; do
-    prompt_input _response "$_message" "$_default_value" "Y" "y" "N" "n"
+    prompt_input _response "$_message" "$_default_value" 1 "Y" "y" "N" "n"
     [[ "$_response" =~ ^[Yy]?$ ]] && break
     [[ "$_response" =~ ^[Nn]?$ ]] && exit 0
     log_warning 'Invalid option selected'
