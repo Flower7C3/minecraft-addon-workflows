@@ -640,6 +640,8 @@ install_locally() {
     die 32 'Local mojang path does not exist: <u>%s</u>.' "$MOJANG_DIR"
   fi
   loading_animation_loop ---message 'Preparing installation'
+  mkdir -p "${MOJANG_DIR}behavior_packs/"
+  mkdir -p "${MOJANG_DIR}resource_packs/"
   rm -rf "${MOJANG_DIR}development_behavior_packs/${PACKNAME}/"
   rm -rf "${MOJANG_DIR}development_resource_packs/${PACKNAME}/"
   rm -rf "${MOJANG_DIR}minecraftWorlds/*/behavior_packs/"
@@ -664,6 +666,8 @@ debug_locally() {
     die 32 'Local mojang path does not exist: <u>%s</u>.' "$MOJANG_DIR"
   fi
   loading_animation_loop ---message 'Preparing installation'
+  mkdir -p "${MOJANG_DIR}development_behavior_packs/"
+  mkdir -p "${MOJANG_DIR}development_resource_packs/"
   rm -rf "${MOJANG_DIR}development_behavior_packs/${PACKNAME}/"
   rm -rf "${MOJANG_DIR}development_resource_packs/${PACKNAME}/"
   rm -rf "${MOJANG_DIR}minecraftWorlds/*/behavior_packs/"
@@ -673,11 +677,11 @@ debug_locally() {
   loading_animation_loop ---message 'Prepared installation' ---status "$MOJANG_DIR"
 
   loading_animation_loop ---message 'Installing BP on local'
-  cp -r "BP/" "${MOJANG_DIR}development_behavior_packs/${PACKNAME}/"
+  cp -r "${INPUT_DIR}${BP_DIR}" "${MOJANG_DIR}development_behavior_packs/${PACKNAME}/"
   loading_animation_loop ---message 'Installed BP on local' ---status "development_behavior_packs/${PACKNAME}/"
 
   loading_animation_loop ---message 'Installing RP on local'
-  cp -r "RP/" "${MOJANG_DIR}development_resource_packs/${PACKNAME}/"
+  cp -r "${INPUT_DIR}${RP_DIR}" "${MOJANG_DIR}development_resource_packs/${PACKNAME}/"
   loading_animation_loop ---message 'Installed RP on local' ---status "development_resource_packs/${PACKNAME}/"
 }
 
