@@ -12,11 +12,6 @@ on:
         type: boolean
         default: false
         description: 'Whether the project has a test workflow'
-      total_blocks:
-        required: false
-        type: boolean
-        default: false
-        description: 'Whether to include total blocks count in statistics'
     outputs:
       version:
         description: 'The incremented version number'
@@ -46,6 +41,9 @@ jobs:
       bp_files: ${{ steps.get_version_stats.outputs.bp_files }}
       rp_files: ${{ steps.get_version_stats.outputs.rp_files }}
       total_blocks: ${{ steps.get_version_stats.outputs.total_blocks }}
+      total_items: ${{ steps.get_version_stats.outputs.total_items }}
+      total_models: ${{ steps.get_version_stats.outputs.total_models }}
+      locales_list: ${{ steps.get_version_stats.outputs.locales_list }}
 
     steps:
       - name: "🔧 Checkout code"
@@ -99,13 +97,21 @@ jobs:
           echo "bp_files=$BP_FILES" >> $GITHUB_OUTPUT
           echo "rp_files=$RP_FILES" >> $GITHUB_OUTPUT
           
-          if [ "${{ inputs.total_blocks }}" = "true" ]; then
-            TOTAL_BLOCKS=$(find BP/blocks -name "*.block.json" | wc -l)
-            echo "total_blocks=$TOTAL_BLOCKS" >> $GITHUB_OUTPUT
-            echo "⏹️ Total blocks: $TOTAL_BLOCKS"
-          else
-            echo "total_blocks=0" >> $GITHUB_OUTPUT
-          fi
+          TOTAL_BLOCKS=$(find BP/blocks -name "*.block.json" | wc -l)
+          echo "total_blocks=$TOTAL_BLOCKS" >> $GITHUB_OUTPUT
+          echo "⏹️ Total blocks: $TOTAL_BLOCKS"
+          
+          TOTAL_ITEMS=$(find BP/items -name "*.item.json" | wc -l)
+          echo "total_items=$TOTAL_ITEMS" >> $GITHUB_OUTPUT
+          echo "⏹️ Total items: $TOTAL_ITEMS"
+          
+          TOTAL_MODELS=$(find RP/models -name "*.geo.json" | wc -l)
+          echo "total_models=$TOTAL_MODELS" >> $GITHUB_OUTPUT
+          echo "⏹️ Total models: $TOTAL_MODELS"
+          
+          LOCALES_LIST=$(find RP/texts -name "*.lang" -exec basename {} .lang \; | sort | tr '\n' ',' | sed 's/,$//')
+          echo "locales_list=$LOCALES_LIST" >> $GITHUB_OUTPUT
+          echo "⏹️ Configured locales: $LOCALES_LIST"
           
           echo "📦 BP files: $BP_FILES"
           echo "📦 RP files: $RP_FILES"
@@ -238,11 +244,17 @@ jobs:
               -v bp_files="${{ needs.build.outputs.bp_files }}" \
               -v rp_files="${{ needs.build.outputs.rp_files }}" \
               -v total_blocks="${{ needs.build.outputs.total_blocks }}" \
+              -v total_items="${{ needs.build.outputs.total_items }}" \
+              -v total_models="${{ needs.build.outputs.total_models }}" \
+              -v locales_list="${{ needs.build.outputs.locales_list }}" \
               -v commits="${{ needs.version-control.outputs.commits }}" \
               '{gsub(/{{ version }}/, version); 
                 gsub(/{{ bp_files }}/, bp_files); 
                 gsub(/{{ rp_files }}/, rp_files); 
                 gsub(/{{ total_blocks }}/, total_blocks); 
+                gsub(/{{ total_items }}/, total_items); 
+                gsub(/{{ total_models }}/, total_models); 
+                gsub(/{{ locales_list }}/, locales_list); 
                 gsub(/{{ commits }}/, commits); 
                 print}' .github/templates/release.md > RELEASE_NOTE.md
           

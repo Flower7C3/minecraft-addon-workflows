@@ -38,6 +38,9 @@ A Minecraft Bedrock Edition addon that adds [description] to your world.
 - BP files: {{ bp_files }}
 - RP files: {{ rp_files }}
 - Total blocks: {{ total_blocks }}
+- Total items: {{ total_items }}
+- Total models: {{ total_models }}
+- Configured locales: {{ locales_list }}
 
 ## Installation
 1. Download the `.mcaddon` file from the assets below
@@ -74,7 +77,6 @@ jobs:
     with:
       project_name: "Your Project Name"
       has_test_workflow: true  # Set to false if no test workflow
-      total_blocks: true       # Set to false if no blocks
     secrets: inherit
 ```
 
@@ -108,7 +110,6 @@ jobs:
     with:
       project_name: "Polish road signs"
       has_test_workflow: true
-      total_blocks: true
     secrets: inherit
 ```
 
@@ -121,7 +122,6 @@ jobs:
     with:
       project_name: "Simple money"
       has_test_workflow: false
-      total_blocks: false
     secrets: inherit
 ```
 
