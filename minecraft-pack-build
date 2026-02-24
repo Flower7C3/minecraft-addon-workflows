@@ -594,7 +594,7 @@ bump_versions() {
     if [[ -f "$_bp_path" ]]; then
         loading_animation_loop ---message 'Saving BP version'
         _bp_content=$(echo "$_bp_content" | jq --argjson ver "$_new_shared_version" '.header.version = $ver')
-        _bp_content=$(echo "$_bp_content" | jq --argjson ver "$_new_shared_version" '(.dependencies[]? | select(.uuid == "'"$_rp_uuid"'") | .version) = $ver')
+        _bp_content=$(echo "$_bp_content" | jq --argjson ver "$_new_shared_version" '(.dependencies[]? | select(.uuid == "'"$_bp_uuid"'") | .version) = $ver')
         echo "$_bp_content" >"$_bp_path"
         loading_animation_loop ---message 'Saved BP version'
     fi
@@ -603,7 +603,7 @@ bump_versions() {
     if [[ -f "$_rp_path" ]]; then
         loading_animation_loop ---message 'Saving RP version'
         _rp_content=$(echo "$_rp_content" | jq --argjson ver "$_new_shared_version" '.header.version = $ver')
-        _rp_content=$(echo "$_rp_content" | jq --argjson ver "$_new_shared_version" '(.dependencies[]? | select(.uuid == "'"$_bp_uuid"'") | .version) = $ver')
+        _rp_content=$(echo "$_rp_content" | jq --argjson ver "$_new_shared_version" '(.dependencies[]? | select(.uuid == "'"$_rp_uuid"'") | .version) = $ver')
         echo "$_rp_content" >"$_rp_path"
         loading_animation_loop ---message 'Saved RP version'
     fi
