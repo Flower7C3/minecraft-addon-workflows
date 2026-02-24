@@ -555,6 +555,7 @@ set_shared_version() {
 
 bump_versions() {
     log_info 'Bumping version for BP and RP'
+
     local _bp_path="${INPUT_DIR}${BP_DIR}manifest.json"
     local _rp_path="${INPUT_DIR}${RP_DIR}manifest.json"
 
@@ -569,10 +570,14 @@ bump_versions() {
     fi
 
     local _bp_uuid
-    _bp_uuid="$(echo "$_bp_content" | jq -r '.header.uuid')"
+    if [[ -f "$_bp_path" ]]; then
+        _bp_uuid="$(echo "$_bp_content" | jq -r '.header.uuid')"
+    fi
 
     local _rp_uuid
-    _rp_uuid="$(echo "$_rp_content" | jq -r '.header.uuid')"
+    if [[ -f "$_rp_path" ]]; then
+        _rp_uuid="$(echo "$_rp_content" | jq -r '.header.uuid')"
+    fi
 
     # Get current shared version and bump it
     loading_animation_loop ---message 'Bumping shared version for BP and RP'
