@@ -2,6 +2,12 @@ name: Test
 
 on:
   workflow_call:
+    inputs:
+      pre_verify_command:
+        description: Optional shell commands to run after installing dependencies and before verify_all.py (e.g. code generation).
+        required: false
+        type: string
+        default: ""
 
 jobs:
   test:
@@ -41,6 +47,12 @@ jobs:
           if [ -f RP/manifest.json ]; then jq empty RP/manifest.json; fi
           jq empty version.json
           echo "✅ All JSON files are valid"
+
+      - name: "⚙️ Pre-verify (optional)"
+        if: ${{ inputs.pre_verify_command != '' }}
+        run: |
+          set -euo pipefail
+          ${{ inputs.pre_verify_command }}
 
       - name: "🧪 verify_all.py"
         run: python3 verify_all.py
