@@ -47,7 +47,7 @@ jobs:
 
     steps:
       - name: "🔧 Checkout code"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
@@ -70,7 +70,7 @@ jobs:
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT          
 
       - name: "📤 Upload build artifacts"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: build-artifacts
           path: |
@@ -79,7 +79,7 @@ jobs:
           retention-days: 1
       
       - name: "📤 Upload manifests"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: manifests
           path: |
@@ -128,7 +128,7 @@ jobs:
       commits: ${{ steps.collect_commits.outputs.commits }}
     steps:
       - name: "🔧 Checkout code"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
@@ -139,7 +139,7 @@ jobs:
           git config --local user.name "GitHub Action"
 
       - name: "📥 Download changed manifests"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: manifests
           path: ./
@@ -203,10 +203,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "🔧 Checkout code"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: "📥 Download build artifacts"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: build-artifacts
           path: dist/
