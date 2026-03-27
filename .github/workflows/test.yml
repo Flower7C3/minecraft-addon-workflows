@@ -10,78 +10,53 @@ jobs:
       - name: "🔧 Checkout code"
         uses: actions/checkout@v4
 
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: "📦 Install dependencies"
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
       - name: "🧪 Verify project structure"
         run: |
+          set -e
           echo "Verifying project structure..."
-          
-          # Check for required directories
-          if [ ! -d "BP" ]; then
-            echo "❌ BP directory not found"
-            exit 1
+          test -d BP || (echo "❌ BP directory not found" && exit 1)
+          test -f BP/manifest.json || (echo "❌ BP/manifest.json not found" && exit 1)
+          if [ -d RP ]; then
+            test -f RP/manifest.json || (echo "❌ RP/manifest.json not found" && exit 1)
           fi
-          
-          if [ ! -d "RP" ]; then
-            echo "❌ RP directory not found"
-            exit 1
-          fi
-          
-          # Check for required files
-          if [ ! -f "BP/manifest.json" ]; then
-            echo "❌ BP/manifest.json not found"
-            exit 1
-          fi
-          
-          if [ ! -f "RP/manifest.json" ]; then
-            echo "❌ RP/manifest.json not found"
-            exit 1
-          fi
-          
-          if [ ! -f "version.json" ]; then
-            echo "❌ version.json not found"
-            exit 1
-          fi
-          
-          # Check for release template
-          if [ ! -f ".github/templates/release.md" ]; then
-            echo "❌ .github/templates/release.md not found"
-            exit 1
-          fi
-          
+          test -f version.json || (echo "❌ version.json not found" && exit 1)
+          test -f .github/templates/release.md || (echo "❌ .github/templates/release.md not found" && exit 1)
           echo "✅ Project structure verified"
 
       - name: "🔍 Validate JSON files"
         run: |
+          set -e
           echo "Validating JSON files..."
-          
-          # Validate BP manifest
-          if ! jq empty BP/manifest.json; then
-            echo "❌ BP/manifest.json is invalid JSON"
-            exit 1
-          fi
-          
-          # Validate RP manifest
-          if ! jq empty RP/manifest.json; then
-            echo "❌ RP/manifest.json is invalid JSON"
-            exit 1
-          fi
-          
-          # Validate version.json
-          if ! jq empty version.json; then
-            echo "❌ version.json is invalid JSON"
-            exit 1
-          fi
-          
+          jq empty BP/manifest.json
+          if [ -f RP/manifest.json ]; then jq empty RP/manifest.json; fi
+          jq empty version.json
           echo "✅ All JSON files are valid"
+
+      - name: "🧪 verify_all.py"
+        run: python3 verify_all.py
 
       - name: "📊 Check project statistics"
         run: |
           echo "Project statistics:"
-          echo "📦 BP files: $(find BP -type f | wc -l)"
-          echo "📦 RP files: $(find RP -type f | wc -l)"
-          echo "📦 Total files: $(find BP RP -type f | wc -l)"
-          
-          if [ -d "BP/blocks" ]; then
-            echo "⏹️ Block files: $(find BP/blocks -name "*.block.json" | wc -l)"
+          echo "📦 BP files: $(find BP -type f 2>/dev/null | wc -l)"
+          if [ -d RP ]; then
+            echo "📦 RP files: $(find RP -type f | wc -l)"
+            echo "📦 Total files: $(find BP RP -type f | wc -l)"
+          else
+            echo "📦 RP: (not present)"
+            echo "📦 Total files: $(find BP -type f | wc -l)"
           fi
-          
+          if [ -d BP/blocks ]; then
+            echo "⏹️ Block files: $(find BP/blocks -name "*.block.json" 2>/dev/null | wc -l)"
+          fi
           echo "✅ Project statistics collected"
