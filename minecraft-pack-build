@@ -579,6 +579,13 @@ bump_versions() {
         _rp_uuid="$(echo "$_rp_content" | jq -r '.header.uuid')"
     fi
 
+    # UUIDs of packs we ship (BP/RP); dependency entries pointing at these get the same bumped version
+    local _known_pack_uuids
+    _known_pack_uuids=$(jq -n \
+        --arg bp "${_bp_uuid:-}" \
+        --arg rp "${_rp_uuid:-}" \
+        '[$bp, $rp] | map(select(. != "" and . != "null")) | unique')
+
     # Get current shared version and bump it
     loading_animation_loop ---message 'Bumping shared version for BP and RP'
     local _current_shared_version
@@ -593,8 +600,10 @@ bump_versions() {
     # Update BP manifest
     if [[ -f "$_bp_path" ]]; then
         loading_animation_loop ---message 'Saving BP version'
-        _bp_content=$(echo "$_bp_content" | jq --argjson ver "$_new_shared_version" '.header.version = $ver')
-        _bp_content=$(echo "$_bp_content" | jq --argjson ver "$_new_shared_version" '(.dependencies[]? | select(.uuid == "'"$_bp_uuid"'") | .version) = $ver')
+        _bp_content=$(echo "$_bp_content" | jq --argjson ver "$_new_shared_version" --argjson known "$_known_pack_uuids" '
+            .header.version = $ver |
+            .dependencies = ((.dependencies // []) | map(. as $d | if ($known | index($d.uuid)) != null then $d | .version = $ver else $d end))
+        ')
         echo "$_bp_content" >"$_bp_path"
         loading_animation_loop ---message 'Saved BP version'
     fi
@@ -602,8 +611,10 @@ bump_versions() {
     # Update RP manifest
     if [[ -f "$_rp_path" ]]; then
         loading_animation_loop ---message 'Saving RP version'
-        _rp_content=$(echo "$_rp_content" | jq --argjson ver "$_new_shared_version" '.header.version = $ver')
-        _rp_content=$(echo "$_rp_content" | jq --argjson ver "$_new_shared_version" '(.dependencies[]? | select(.uuid == "'"$_rp_uuid"'") | .version) = $ver')
+        _rp_content=$(echo "$_rp_content" | jq --argjson ver "$_new_shared_version" --argjson known "$_known_pack_uuids" '
+            .header.version = $ver |
+            .dependencies = ((.dependencies // []) | map(. as $d | if ($known | index($d.uuid)) != null then $d | .version = $ver else $d end))
+        ')
         echo "$_rp_content" >"$_rp_path"
         loading_animation_loop ---message 'Saved RP version'
     fi
