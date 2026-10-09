@@ -1,0 +1,28 @@
+# .aiignore — format zgodny z .gitignore (Bridge/AI tooling).
+# Wzorce bez ukośnika na początku i bez ukośnika na końcu pasują rekurencyjnie,
+# np. dist/ obejmuje także src/*/dist/.
+# Katalog jest jednocześnie osobnym repo git — .gitignore działa niezależnie.
+
+# UWAGA: BP/ i RP/ to ŹRÓDŁO dodatków (manifest.json, scripts, textures),
+# mimo że wyglądają jak build. Nie ignoruj ich.
+
+# Artefakty budowania i zależności
+node_modules/
+dist/
+build/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Paczki i logi
+*.mcpack
+*.mcaddon
+*.mcworld
+.cache/
+*.log
+
+# IDE / system
+.idea/
+.vscode/
+.DS_Store
